@@ -1,6 +1,6 @@
 # Story 1.1: Project Cleanup & Core Dependencies
 
-Status: review
+Status: done
 
 ## Story
 
@@ -405,6 +405,23 @@ noana/
 - [Source: NativeWind v4 docs — Installation + Metro + Babel config]
 - [Source: @gorhom/bottom-sheet GitHub — Reanimated v4 compatibility issues]
 
+## Senior Developer Review (AI)
+
+**Review Date:** 2026-02-22
+**Reviewer Model:** Claude Opus 4.6
+**Review Outcome:** Approve (after fixes)
+
+### Action Items
+- [x] [HIGH] Fix `IconSymbolName` type resolving to `string` — use `satisfies` pattern for type-safe MAPPING keys
+- [x] [HIGH] Remove `as string` type assertion in `icon-symbol.tsx` — narrow prop type to `string` only
+- [x] [MED] Replace inline `style={}` with NativeWind `className` in `app/(tabs)/index.tsx`
+- [x] [MED] Add `.gitkeep` to empty directories (`stores/`, `lib/api/`, `types/`) so git tracks them
+- [x] [MED] Document `tsconfig.json` modification in story File List
+- [ ] [LOW] Add `"format"` script to package.json for Prettier (deferred — not required by ACs)
+- [ ] [LOW] Improve smoke test to import actual project code (deferred — within spec as-is)
+
+**Total:** 5 fixed, 2 deferred (LOW severity)
+
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -436,6 +453,7 @@ Claude Opus 4.6
 | Font loading | done | 7 font variants loaded via useFonts(), SplashScreen gate added |
 | Jest setup | done | jest-expo preset in package.json, smoke test passes |
 | Root providers | done | GestureHandlerRootView + BottomSheetModalProvider wrapping app |
+| Code review fixes | done | 5 issues fixed: type safety, NativeWind usage, .gitkeep, File List |
 
 ### File List
 
@@ -461,12 +479,16 @@ Claude Opus 4.6
 - .prettierrc
 - .env.example
 - lib/storage.ts
+- stores/.gitkeep
+- lib/api/.gitkeep
+- types/.gitkeep
 - app/__tests__/smoke.test.ts
 
 **Modified:**
 - app/_layout.tsx (fonts, providers, global.css import, removed modal)
 - app/(tabs)/_layout.tsx (removed explore tab, switched to lucide icons)
-- app/(tabs)/index.tsx (replaced template content with minimal placeholder)
-- components/ui/icon-symbol.tsx (migrated from @expo/vector-icons to lucide-react-native)
+- app/(tabs)/index.tsx (replaced template content with NativeWind className placeholder)
+- components/ui/icon-symbol.tsx (migrated from @expo/vector-icons to lucide-react-native, type-safe MAPPING)
 - package.json (new deps, test script, jest config, removed reset-project script)
+- tsconfig.json (nativewind-env.d.ts added to include — auto-modified by NativeWind install)
 - .gitignore (added .env)

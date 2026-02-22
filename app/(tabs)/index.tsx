@@ -5,9 +5,9 @@ import { ThemedView } from '@/components/themed-view';
 
 export default function HomeScreen() {
   return (
-    <ThemedView style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+    <ThemedView className="flex-1 items-center justify-center p-5">
       <ThemedText type="title">noana</ThemedText>
-      <View style={{ height: 8 }} />
+      <View className="h-2" />
       <ThemedText>Discover restaurants near you</ThemedText>
     </ThemedView>
   );
