@@ -2,6 +2,7 @@
 
 # dependencies
 node_modules/
+package-lock.json
 
 # Expo
 .expo/
@@ -33,6 +34,9 @@ yarn-error.*
 # local env files
 .env
 .env*.local
+
+# Supabase local dev
+supabase/.temp/
 
 # typescript
 *.tsbuildinfo
