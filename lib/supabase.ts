@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { type Database } from '@/types/supabase';
 
@@ -9,6 +10,11 @@ const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 // Supabase auth sessions are ~2800 bytes, so we split large values across
 // multiple SecureStore keys to keep everything encrypted at rest.
 const CHUNK_SIZE = 2048;
+
+// SecureStore only works on native (iOS/Android). On web or during static
+// rendering (Node.js), we skip persistence — sessions won't survive refresh
+// on web, which is fine since noana is a mobile-first app.
+const isNative = Platform.OS === 'ios' || Platform.OS === 'android';
 
 // Helper: remove all chunk keys and the count key for a given key
 async function clearChunks(key: string): Promise<void> {
@@ -24,6 +30,7 @@ async function clearChunks(key: string): Promise<void> {
 
 export const ExpoSecureStoreAdapter = {
   getItem: async (key: string): Promise<string | null> => {
+    if (!isNative) return null;
     const countStr = await SecureStore.getItemAsync(`${key}_count`);
     if (!countStr) {
       // Short value stored as a single key
@@ -40,6 +47,7 @@ export const ExpoSecureStoreAdapter = {
   },
 
   setItem: async (key: string, value: string): Promise<void> => {
+    if (!isNative) return;
     // Always clean up previous chunks before writing (fixes stale chunk bugs)
     await clearChunks(key);
 
@@ -58,6 +66,7 @@ export const ExpoSecureStoreAdapter = {
   },
 
   removeItem: async (key: string): Promise<void> => {
+    if (!isNative) return;
     await clearChunks(key);
     await SecureStore.deleteItemAsync(key);
   },

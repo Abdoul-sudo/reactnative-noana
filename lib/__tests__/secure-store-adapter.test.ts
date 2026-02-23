@@ -1,3 +1,9 @@
+// Mock Platform to simulate native environment (so isNative === true)
+jest.mock('react-native', () => ({
+  Platform: { OS: 'ios' },
+  AppState: { addEventListener: jest.fn() },
+}));
+
 // Mock expo-secure-store with an in-memory store to test the real adapter.
 // Jest requires variables referenced inside jest.mock() to start with "mock".
 const mockStore = new Map<string, string>();

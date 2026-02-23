@@ -1,3 +1,9 @@
+// Mock react-native Platform (needed by supabase.ts for isNative check)
+jest.mock('react-native', () => ({
+  Platform: { OS: 'ios' },
+  AppState: { addEventListener: jest.fn() },
+}));
+
 // Mock expo-secure-store (native module unavailable in Jest)
 jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn(),
