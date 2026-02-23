@@ -18,9 +18,11 @@ interface AuthState {
   session: Session | null;
   role: Role | null;
   isHydrated: boolean;
+  onboardingCompleted: boolean | null; // null = not yet loaded
   hydrate: () => Promise<void>;
   setSession: (session: Session | null) => void;
   setRole: (role: Role | null) => void;
+  setOnboardingCompleted: (value: boolean | null) => void;
   reset: () => void;
 }
 
@@ -28,6 +30,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   session: null,
   role: null,
   isHydrated: false,
+  onboardingCompleted: null,
 
   hydrate: async () => {
     const {
@@ -39,16 +42,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({
         session,
         role: parseRole(profile.role),
+        onboardingCompleted: profile.onboarding_completed ?? false,
         isHydrated: true,
       });
     } else {
-      set({ session: null, role: null, isHydrated: true });
+      set({ session: null, role: null, onboardingCompleted: null, isHydrated: true });
     }
   },
 
   setSession: (session) => set({ session }),
   setRole: (role) => set({ role }),
-  reset: () => set({ session: null, role: null, isHydrated: false }),
+  setOnboardingCompleted: (value) => set({ onboardingCompleted: value }),
+  reset: () => set({ session: null, role: null, isHydrated: false, onboardingCompleted: null }),
 }));
 
 // Listen for auth state changes (sign in, sign out, token refresh).
@@ -63,6 +68,7 @@ supabase.auth.onAuthStateChange((event, session) => {
       try {
         const profile = await fetchProfile(session.user.id);
         useAuthStore.getState().setRole(parseRole(profile.role));
+        useAuthStore.getState().setOnboardingCompleted(profile.onboarding_completed ?? false);
       } catch (err) {
         // Profile fetch may fail on initial signup before trigger completes.
         // hydrate() will catch it on next app start.
@@ -71,6 +77,7 @@ supabase.auth.onAuthStateChange((event, session) => {
     }, 0);
   } else {
     useAuthStore.getState().setRole(null);
+    useAuthStore.getState().setOnboardingCompleted(null);
   }
 });
 

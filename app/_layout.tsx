@@ -33,7 +33,7 @@ export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
 
-  const { isHydrated, session, role, hydrate } = useAuthStore();
+  const { isHydrated, session, role, onboardingCompleted, hydrate } = useAuthStore();
   const { isConnected } = useNetwork();
 
   // Tracks whether we detected no connection at launch, before hydration ran.
@@ -86,17 +86,31 @@ export default function RootLayout() {
         router.replace('/(auth)/login');
       }
     } else if (role === 'owner') {
-      // Owner → owner dashboard
+      // Owner → owner dashboard (owners skip onboarding)
       if (inAuthGroup || inTabsGroup) {
         router.replace('/(owner)');
       }
     } else {
-      // Customer (default) → customer tabs
-      if (inAuthGroup || inOwnerGroup) {
+      // Customer — wait for role AND onboardingCompleted to be confirmed.
+      // Both are set in the deferred onAuthStateChange profile fetch
+      // (setTimeout 0 in auth-store). They are separate setState calls,
+      // so there is a render between them where role='customer' but
+      // onboardingCompleted=null — guarding both prevents a spurious
+      // redirect to onboarding for returning users.
+      if (role === null || onboardingCompleted === null) return;
+
+      const inOnboarding = segments[0] === '(auth)' && segments[1] === 'onboarding';
+
+      if (!onboardingCompleted && !inOnboarding) {
+        // First-time customer (or incomplete onboarding) → onboarding flow
+        router.replace('/(auth)/onboarding');
+      } else if (onboardingCompleted && (inAuthGroup || inOwnerGroup)) {
+        // Returning customer landing on auth screens → home
         router.replace('/(tabs)');
       }
+      // Already in (tabs) with onboarding done → no redirect needed
     }
-  }, [isHydrated, session, role, segments, router]);
+  }, [isHydrated, session, role, onboardingCompleted, segments, router]);
 
   // Keep splash visible until fonts ready AND (hydrated OR offline detected)
   if (!fontsLoaded || (!isHydrated && !isOfflineAtLaunch)) return null;
