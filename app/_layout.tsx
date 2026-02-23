@@ -15,13 +15,16 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import '../global.css';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import NetInfo from '@react-native-community/netinfo';
+import { useNetwork } from '@/hooks/use-network';
 import { useAuthStore } from '@/stores/auth-store';
+import { NoConnection } from '@/components/ui/no-connection';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -31,6 +34,12 @@ export default function RootLayout() {
   const segments = useSegments();
 
   const { isHydrated, session, role, hydrate } = useAuthStore();
+  const { isConnected } = useNetwork();
+
+  // Tracks whether we detected no connection at launch, before hydration ran.
+  // This breaks the deadlock where isHydrated never becomes true when offline
+  // (fetchProfile in hydrate() requires network).
+  const [isOfflineAtLaunch, setIsOfflineAtLaunch] = useState(false);
 
   const [fontsLoaded] = useFonts({
     PlayfairDisplaySC_400Regular,
@@ -42,23 +51,34 @@ export default function RootLayout() {
     Karla_700Bold,
   });
 
-  // Hydrate auth state on mount
+  // Only call hydrate() when connected AND not yet hydrated.
+  // The !isHydrated guard prevents double-calling on reconnect mid-session:
+  // without it, the effect re-runs when isHydrated changes false→true
+  // (it's a dep), and would call hydrate() a second time unnecessarily.
   useEffect(() => {
-    hydrate();
-  }, [hydrate]);
+    if (isConnected === true && !isHydrated) {
+      setIsOfflineAtLaunch(false);
+      hydrate();
+    } else if (isConnected === false && !isHydrated) {
+      setIsOfflineAtLaunch(true);
+    }
+  }, [isConnected, hydrate, isHydrated]);
 
-  // Hide splash screen once fonts are loaded AND auth is hydrated
+  // Hide splash screen once fonts are loaded AND (hydrated OR we know we're offline).
+  // Without the offline check, the splash stays visible forever when offline.
   useEffect(() => {
-    if (fontsLoaded && isHydrated) {
+    if (fontsLoaded && (isHydrated || isOfflineAtLaunch)) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, isHydrated]);
+  }, [fontsLoaded, isHydrated, isOfflineAtLaunch]);
 
   // Auth guard — single redirect logic, runs only after hydration
   useEffect(() => {
     if (!isHydrated) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const inOwnerGroup = segments[0] === '(owner)';
+    const inTabsGroup = segments[0] === '(tabs)';
 
     if (!session) {
       // Not authenticated → send to login (unless already there)
@@ -66,20 +86,37 @@ export default function RootLayout() {
         router.replace('/(auth)/login');
       }
     } else if (role === 'owner') {
-      // TODO: route to /(owner)/ when owner dashboard is implemented (Story 2.x)
-      if (inAuthGroup) {
-        router.replace('/(tabs)');
+      // Owner → owner dashboard
+      if (inAuthGroup || inTabsGroup) {
+        router.replace('/(owner)');
       }
     } else {
-      // Customer (default) → send to customer tabs
-      if (inAuthGroup) {
+      // Customer (default) → customer tabs
+      if (inAuthGroup || inOwnerGroup) {
         router.replace('/(tabs)');
       }
     }
   }, [isHydrated, session, role, segments, router]);
 
-  // Keep splash visible until both fonts and auth are ready
-  if (!fontsLoaded || !isHydrated) return null;
+  // Keep splash visible until fonts ready AND (hydrated OR offline detected)
+  if (!fontsLoaded || (!isHydrated && !isOfflineAtLaunch)) return null;
+
+  // No connection — show dedicated screen with retry
+  if (isOfflineAtLaunch) {
+    return (
+      <NoConnection
+        onRetry={async () => {
+          // Do a fresh check — the useNetwork listener may not have fired yet.
+          // Only transition if actually connected; otherwise keep NoConnection visible.
+          const { isConnected: nowConnected } = await NetInfo.fetch();
+          if (nowConnected) {
+            setIsOfflineAtLaunch(false);
+            hydrate();
+          }
+        }}
+      />
+    );
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -88,6 +125,11 @@ export default function RootLayout() {
           <Stack>
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="(owner)" options={{ headerShown: false }} />
+            <Stack.Screen name="restaurant/[slug]" options={{ headerShown: false }} />
+            <Stack.Screen name="order/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="checkout" options={{ headerShown: false }} />
+            <Stack.Screen name="profile" options={{ headerShown: false }} />
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>
