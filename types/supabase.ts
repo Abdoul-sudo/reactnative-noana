@@ -34,6 +34,104 @@ export type Database = {
   }
   public: {
     Tables: {
+      menu_categories: {
+        Row: {
+          created_at: string | null
+          deleted_at: string | null
+          id: string
+          name: string
+          restaurant_id: string
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          deleted_at?: string | null
+          id?: string
+          name: string
+          restaurant_id: string
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          deleted_at?: string | null
+          id?: string
+          name?: string
+          restaurant_id?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_categories_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_items: {
+        Row: {
+          category_id: string
+          created_at: string | null
+          deleted_at: string | null
+          description: string | null
+          dietary_tags: Json | null
+          id: string
+          image_url: string | null
+          is_available: boolean | null
+          name: string
+          prep_time_min: number | null
+          price: number
+          restaurant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          category_id: string
+          created_at?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          dietary_tags?: Json | null
+          id?: string
+          image_url?: string | null
+          is_available?: boolean | null
+          name: string
+          prep_time_min?: number | null
+          price: number
+          restaurant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          category_id?: string
+          created_at?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          dietary_tags?: Json | null
+          id?: string
+          image_url?: string | null
+          is_available?: boolean | null
+          name?: string
+          prep_time_min?: number | null
+          price?: number
+          restaurant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "menu_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_items_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -73,12 +171,119 @@ export type Database = {
         }
         Relationships: []
       }
+      restaurants: {
+        Row: {
+          address: string | null
+          cover_image_url: string | null
+          created_at: string | null
+          cuisine_type: string | null
+          deleted_at: string | null
+          delivery_fee: number | null
+          delivery_time_min: number | null
+          description: string | null
+          dietary_options: Json | null
+          id: string
+          is_open: boolean | null
+          latitude: number
+          logo_url: string | null
+          longitude: number
+          minimum_order: number | null
+          name: string
+          owner_id: string
+          phone: string | null
+          price_range: string | null
+          rating: number | null
+          slug: string
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          cover_image_url?: string | null
+          created_at?: string | null
+          cuisine_type?: string | null
+          deleted_at?: string | null
+          delivery_fee?: number | null
+          delivery_time_min?: number | null
+          description?: string | null
+          dietary_options?: Json | null
+          id?: string
+          is_open?: boolean | null
+          latitude: number
+          logo_url?: string | null
+          longitude: number
+          minimum_order?: number | null
+          name: string
+          owner_id: string
+          phone?: string | null
+          price_range?: string | null
+          rating?: number | null
+          slug: string
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          cover_image_url?: string | null
+          created_at?: string | null
+          cuisine_type?: string | null
+          deleted_at?: string | null
+          delivery_fee?: number | null
+          delivery_time_min?: number | null
+          description?: string | null
+          dietary_options?: Json | null
+          id?: string
+          is_open?: boolean | null
+          latitude?: number
+          logo_url?: string | null
+          longitude?: number
+          minimum_order?: number | null
+          name?: string
+          owner_id?: string
+          phone?: string | null
+          price_range?: string | null
+          rating?: number | null
+          slug?: string
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurants_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      nearby_restaurants: {
+        Args: {
+          dietary_filter?: Json
+          radius_km?: number
+          user_lat: number
+          user_lng: number
+        }
+        Returns: {
+          cover_image_url: string
+          cuisine_type: string
+          delivery_fee: number
+          delivery_time_min: number
+          dietary_options: Json
+          distance_km: number
+          id: string
+          is_open: boolean
+          name: string
+          price_range: string
+          rating: number
+          slug: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
