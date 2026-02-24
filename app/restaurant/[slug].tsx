@@ -1,13 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
-  SectionList, View, Text, Pressable, RefreshControl, Linking, ActivityIndicator,
+  SectionList, View, Text, Pressable, RefreshControl, Linking, ActivityIndicator, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Plus, Minus, Star, MapPin, Phone, Globe } from 'lucide-react-native';
 import { Image } from 'expo-image';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import * as Haptics from 'expo-haptics';
 import { useCartStore } from '@/stores/cart-store';
 import { CartFloatingBar } from '@/components/cart/cart-floating-bar';
+import { CartConflictDialog } from '@/components/cart/cart-conflict-dialog';
+import { CartBottomSheet } from '@/components/cart/cart-bottom-sheet';
 import { RestaurantHeader } from '@/components/restaurant/restaurant-header';
 import { RestaurantDetailSkeleton } from '@/components/restaurant/restaurant-detail-skeleton';
 import { ErrorState } from '@/components/ui/error-state';
@@ -59,6 +63,20 @@ export default function RestaurantDetailScreen() {
 
   const cartItems = useCartStore((s) => s.items);
   const cartRestaurantId = useCartStore((s) => s.restaurantId);
+  const cartRestaurantName = useCartStore((s) => s.restaurantName);
+  const hasConflict = useCartStore((s) => s.hasConflict);
+  const confirmConflict = useCartStore((s) => s.confirmConflict);
+  const cancelConflict = useCartStore((s) => s.cancelConflict);
+
+  const conflictDialogRef = useRef<BottomSheetModal>(null);
+  const cartSheetRef = useRef<BottomSheetModal>(null);
+
+  // Present conflict dialog when store detects a restaurant mismatch
+  useEffect(() => {
+    if (hasConflict) {
+      conflictDialogRef.current?.present();
+    }
+  }, [hasConflict]);
 
   // ── Loading state ────────────────────────────────────
   if (isLoading) {
@@ -187,7 +205,7 @@ export default function RestaurantDetailScreen() {
 
           // Menu item row
           if (item && 'price' in item) {
-            return <MenuItemRow item={item as MenuItem} />;
+            return <MenuItemRow item={item as MenuItem} restaurantName={restaurant.name} />;
           }
 
           return null;
@@ -201,7 +219,29 @@ export default function RestaurantDetailScreen() {
         }
       />
 
-      <CartFloatingBar currentRestaurantId={restaurant.id} />
+      <CartFloatingBar
+        currentRestaurantId={restaurant.id}
+        onViewCart={() => cartSheetRef.current?.present()}
+      />
+
+      <CartConflictDialog
+        ref={conflictDialogRef}
+        currentRestaurantName={cartRestaurantName ?? restaurant.name}
+        onReplace={() => {
+          confirmConflict();
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          conflictDialogRef.current?.dismiss();
+        }}
+        onKeep={() => {
+          cancelConflict();
+          conflictDialogRef.current?.dismiss();
+        }}
+      />
+
+      <CartBottomSheet
+        ref={cartSheetRef}
+        onCheckout={() => Alert.alert('Checkout', 'Checkout flow coming in Story 5.4')}
+      />
     </SafeAreaView>
   );
 }
@@ -265,7 +305,7 @@ function DetailTabBar({ activeTab, onTabChange }: DetailTabBarProps) {
 
 // ── Menu item row with add-to-cart ───────────────────────────────────────────
 
-function MenuItemRow({ item }: { item: MenuItem }) {
+function MenuItemRow({ item, restaurantName }: { item: MenuItem; restaurantName: string }) {
   const dietaryTags = Array.isArray(item.dietary_tags)
     ? (item.dietary_tags as string[])
     : [];
@@ -331,14 +371,19 @@ function MenuItemRow({ item }: { item: MenuItem }) {
 
           {!isUnavailable && quantity === 0 && (
             <Pressable
-              onPress={() =>
+              onPress={() => {
                 addItem({
                   id: item.id,
                   name: item.name,
                   price: item.price,
                   restaurant_id: item.restaurant_id,
-                })
-              }
+                  restaurant_name: restaurantName,
+                });
+                // Only haptic when item was actually added (not on conflict)
+                if (!useCartStore.getState().hasConflict) {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }
+              }}
               accessibilityRole="button"
               accessibilityLabel={`Add ${item.name} to cart`}
               className="mt-2 bg-red-600 rounded-full px-4 py-1.5"

@@ -1,4 +1,4 @@
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { ShoppingCart } from 'lucide-react-native';
@@ -6,9 +6,10 @@ import { useCartStore } from '@/stores/cart-store';
 
 type CartFloatingBarProps = {
   currentRestaurantId: string;
+  onViewCart: () => void;
 };
 
-export function CartFloatingBar({ currentRestaurantId }: CartFloatingBarProps) {
+export function CartFloatingBar({ currentRestaurantId, onViewCart }: CartFloatingBarProps) {
   const insets = useSafeAreaInsets();
 
   const items = useCartStore((s) => s.items);
@@ -44,9 +45,7 @@ export function CartFloatingBar({ currentRestaurantId }: CartFloatingBarProps) {
             {total} DA
           </Text>
           <Pressable
-            onPress={() =>
-              Alert.alert('Cart', `${itemCount} ${itemCount === 1 ? 'item' : 'items'}\nTotal: ${total} DA`)
-            }
+            onPress={onViewCart}
             accessibilityRole="button"
             accessibilityLabel={`View cart, ${itemCount} ${itemCount === 1 ? 'item' : 'items'}, ${total} DA`}
             className="bg-red-600 rounded-full px-5 py-2"
