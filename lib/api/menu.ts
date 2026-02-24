@@ -7,6 +7,29 @@ export type MenuItem = Tables<'menu_items'>;
 // Convenience type: a category with its items nested inside.
 export type MenuCategoryWithItems = MenuCategory & { items: MenuItem[] };
 
+/** A dish with its parent restaurant's name and slug for attribution. */
+export type TrendingDish = MenuItem & {
+  restaurant: { name: string; slug: string };
+};
+
+/**
+ * Fetch trending dishes with restaurant attribution.
+ * For MVP, "trending" = newest available items (no order volume data yet).
+ * TODO: replace with actual popularity/order-volume sorting when orders table exists
+ */
+export async function fetchTrendingDishes(): Promise<TrendingDish[]> {
+  const { data, error } = await supabase
+    .from('menu_items')
+    .select('*, restaurant:restaurants!menu_items_restaurant_id_fkey(name, slug)')
+    .is('deleted_at', null)
+    .eq('is_available', true)
+    .order('created_at', { ascending: false })
+    .limit(10);
+  if (error) throw error;
+  // Cast needed: Supabase generic types don't infer the joined restaurant fields
+  return (data ?? []) as TrendingDish[];
+}
+
 /**
  * Fetch the full menu for a restaurant, organised into categories.
  * Only active categories (deleted_at IS NULL) and active items are returned.

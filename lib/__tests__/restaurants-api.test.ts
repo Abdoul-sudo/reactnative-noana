@@ -14,6 +14,9 @@ jest.mock('react-native', () => ({
 import { supabase } from '@/lib/supabase';
 import {
   fetchRestaurants,
+  fetchFeaturedRestaurants,
+  fetchRestaurantsByCuisine,
+  fetchTopRatedRestaurants,
   fetchNearbyRestaurants,
   fetchRestaurantBySlug,
   type Restaurant,
@@ -91,6 +94,128 @@ describe('fetchRestaurants', () => {
     jest.spyOn(supabase, 'from').mockReturnValue({ select: mockSelect } as any);
 
     await expect(fetchRestaurants()).rejects.toMatchObject({
+      message: 'connection refused',
+    });
+  });
+});
+
+// ── fetchFeaturedRestaurants ──────────────────────────────────────────────────
+
+describe('fetchFeaturedRestaurants', () => {
+  it('fetches open restaurants ordered by rating descending', async () => {
+    const mockOrder = jest.fn().mockResolvedValue({ data: [mockRestaurant], error: null });
+    const mockEq = jest.fn().mockReturnValue({ order: mockOrder });
+    const mockIs = jest.fn().mockReturnValue({ eq: mockEq });
+    const mockSelect = jest.fn().mockReturnValue({ is: mockIs });
+    jest.spyOn(supabase, 'from').mockReturnValue({ select: mockSelect } as any);
+
+    const result = await fetchFeaturedRestaurants();
+
+    expect(supabase.from).toHaveBeenCalledWith('restaurants');
+    expect(mockSelect).toHaveBeenCalledWith('*');
+    expect(mockIs).toHaveBeenCalledWith('deleted_at', null);
+    expect(mockEq).toHaveBeenCalledWith('is_open', true);
+    expect(mockOrder).toHaveBeenCalledWith('rating', { ascending: false });
+    expect(result).toEqual([mockRestaurant]);
+  });
+
+  it('throws on database error', async () => {
+    const mockOrder = jest.fn().mockResolvedValue({
+      data: null,
+      error: { message: 'connection refused', code: '08006' },
+    });
+    const mockEq = jest.fn().mockReturnValue({ order: mockOrder });
+    const mockIs = jest.fn().mockReturnValue({ eq: mockEq });
+    const mockSelect = jest.fn().mockReturnValue({ is: mockIs });
+    jest.spyOn(supabase, 'from').mockReturnValue({ select: mockSelect } as any);
+
+    await expect(fetchFeaturedRestaurants()).rejects.toMatchObject({
+      message: 'connection refused',
+    });
+  });
+});
+
+// ── fetchRestaurantsByCuisine ────────────────────────────────────────────────
+
+describe('fetchRestaurantsByCuisine', () => {
+  it('filters by cuisine_type and orders by rating', async () => {
+    const mockOrder = jest.fn().mockResolvedValue({ data: [mockRestaurant], error: null });
+    const mockIs = jest.fn().mockReturnValue({ order: mockOrder });
+    const mockEqCuisine = jest.fn().mockReturnValue({ is: mockIs });
+    const mockSelect = jest.fn().mockReturnValue({ eq: mockEqCuisine });
+    jest.spyOn(supabase, 'from').mockReturnValue({ select: mockSelect } as any);
+
+    const result = await fetchRestaurantsByCuisine('Italian');
+
+    expect(supabase.from).toHaveBeenCalledWith('restaurants');
+    expect(mockEqCuisine).toHaveBeenCalledWith('cuisine_type', 'Italian');
+    expect(mockIs).toHaveBeenCalledWith('deleted_at', null);
+    expect(mockOrder).toHaveBeenCalledWith('rating', { ascending: false });
+    expect(result).toEqual([mockRestaurant]);
+  });
+
+  it('throws on database error', async () => {
+    const mockOrder = jest.fn().mockResolvedValue({
+      data: null,
+      error: { message: 'query timeout', code: '57014' },
+    });
+    const mockIs = jest.fn().mockReturnValue({ order: mockOrder });
+    const mockEqCuisine = jest.fn().mockReturnValue({ is: mockIs });
+    const mockSelect = jest.fn().mockReturnValue({ eq: mockEqCuisine });
+    jest.spyOn(supabase, 'from').mockReturnValue({ select: mockSelect } as any);
+
+    await expect(fetchRestaurantsByCuisine('Asian')).rejects.toMatchObject({
+      message: 'query timeout',
+    });
+  });
+});
+
+// ── fetchTopRatedRestaurants ─────────────────────────────────────────────────
+
+describe('fetchTopRatedRestaurants', () => {
+  /** Helper: builds the mock chain for fetchTopRatedRestaurants
+   *  from → select → is → order → limit
+   */
+  function buildChain(resolvedValue: { data: Restaurant[] | null; error: any }) {
+    const mockLimit = jest.fn().mockResolvedValue(resolvedValue);
+    const mockOrder = jest.fn().mockReturnValue({ limit: mockLimit });
+    const mockIs = jest.fn().mockReturnValue({ order: mockOrder });
+    const mockSelect = jest.fn().mockReturnValue({ is: mockIs });
+    jest.spyOn(supabase, 'from').mockReturnValue({ select: mockSelect } as any);
+    return { mockSelect, mockIs, mockOrder, mockLimit };
+  }
+
+  it('fetches top rated restaurants ordered by rating with limit', async () => {
+    const { mockSelect, mockIs, mockOrder, mockLimit } = buildChain({
+      data: [mockRestaurant as Restaurant],
+      error: null,
+    });
+
+    const result = await fetchTopRatedRestaurants();
+
+    expect(supabase.from).toHaveBeenCalledWith('restaurants');
+    expect(mockSelect).toHaveBeenCalledWith('*');
+    expect(mockIs).toHaveBeenCalledWith('deleted_at', null);
+    expect(mockOrder).toHaveBeenCalledWith('rating', { ascending: false });
+    expect(mockLimit).toHaveBeenCalledWith(10);
+    expect(result).toEqual([mockRestaurant]);
+  });
+
+  it('returns empty array when no restaurants exist', async () => {
+    buildChain({ data: [], error: null });
+
+    const result = await fetchTopRatedRestaurants();
+
+    expect(result).toEqual([]);
+  });
+
+  it('throws on database error', async () => {
+    buildChain({
+      data: null,
+      error: { message: 'connection refused', code: '08006' },
+    });
+
+    await expect(fetchTopRatedRestaurants()).rejects.toMatchObject({
       message: 'connection refused',
     });
   });

@@ -1,31 +1,61 @@
-import { ScrollView, View, Text, Pressable, RefreshControl } from 'react-native';
+import { FlatList, ScrollView, View, Text, Pressable, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Bell, MapPin, ChevronDown, Search } from 'lucide-react-native';
 import { useState } from 'react';
 import { DietaryFilterBar } from '@/components/home/dietary-filter-bar';
+import { CategoryScroll } from '@/components/home/category-scroll';
+import { RestaurantCard } from '@/components/home/restaurant-card';
+import { DishCard } from '@/components/home/dish-card';
 import { HomeSkeleton } from '@/components/home/home-skeleton';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ErrorState } from '@/components/ui/error-state';
 import { useDietaryFilters } from '@/hooks/use-dietary-filters';
+import { useCuisineCategories } from '@/hooks/use-cuisine-categories';
+import { useFeaturedRestaurants } from '@/hooks/use-featured-restaurants';
+import { useTrendingDishes } from '@/hooks/use-trending-dishes';
+import { useTopRatedRestaurants } from '@/hooks/use-top-rated-restaurants';
+import { type Restaurant } from '@/lib/api/restaurants';
+import { type TrendingDish } from '@/lib/api/menu';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { activeFilters, toggleFilter } = useDietaryFilters();
+  const { activeFilters, toggleFilter, clearFilters } = useDietaryFilters();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Stub: replaced by real data hooks in Stories 2.4/2.5
-  const isLoading = false;
+  const { categories } = useCuisineCategories();
+  const {
+    restaurants: featuredRestaurants,
+    isLoading: featuredLoading,
+    error: featuredError,
+    refetch: refetchFeatured,
+  } = useFeaturedRestaurants(activeFilters);
+  const {
+    dishes: trendingDishes,
+    isLoading: trendingLoading,
+    error: trendingError,
+    refetch: refetchTrending,
+  } = useTrendingDishes(activeFilters);
+  const {
+    restaurants: topRatedRestaurants,
+    isLoading: topRatedLoading,
+    error: topRatedError,
+    refetch: refetchTopRated,
+  } = useTopRatedRestaurants(activeFilters);
+
+  const isLoading = featuredLoading || trendingLoading || topRatedLoading;
 
   async function handleRefresh() {
     setIsRefreshing(true);
-    // TODO 2.4/2.5: replace with real refetch() calls from data hooks
-    await new Promise(r => setTimeout(r, 300));
+    await Promise.all([refetchFeatured(), refetchTrending(), refetchTopRated()]);
     setIsRefreshing(false);
   }
 
-  if (isLoading) return <HomeSkeleton />;
-
   return (
     <SafeAreaView className="flex-1 bg-white" edges={['top']}>
+      {isLoading ? (
+        <HomeSkeleton />
+      ) : (
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -88,10 +118,88 @@ export default function HomeScreen() {
         {/* ── Dietary filter chips ───────────────────────────── */}
         <DietaryFilterBar activeFilters={activeFilters} onToggle={toggleFilter} />
 
-        {/* ── Content sections (Stories 2.4/2.5 fill here) ──── */}
-        {/* TODO 2.4: CuisineCategories, FeaturedRestaurants    */}
-        {/* TODO 2.5: TrendingDishes, TopRatedRestaurants       */}
+        {/* ── Cuisine categories ─────────────────────────────── */}
+        <View className="mt-2">
+          <Text className="font-[Karla_700Bold] text-base text-gray-900 px-4 mb-2">
+            Cuisine Categories
+          </Text>
+          <CategoryScroll categories={categories} />
+        </View>
+
+        {/* ── Featured restaurants ────────────────────────────── */}
+        <View className="mt-4">
+          <Text className="font-[Karla_700Bold] text-base text-gray-900 px-4 mb-2">
+            Featured Restaurants
+          </Text>
+          {featuredError ? (
+            <ErrorState message={featuredError.message} onRetry={refetchFeatured} />
+          ) : featuredRestaurants.length === 0 ? (
+            <EmptyState type="featured_restaurants" />
+          ) : (
+            <FlatList
+              data={featuredRestaurants}
+              keyExtractor={(item: Restaurant) => item.id}
+              renderItem={({ item }: { item: Restaurant }) => (
+                <RestaurantCard restaurant={item} />
+              )}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16 }}
+            />
+          )}
+        </View>
+
+        {/* ── Trending dishes ────────────────────────────────── */}
+        <View className="mt-4">
+          <Text className="font-[Karla_700Bold] text-base text-gray-900 px-4 mb-2">
+            Trending Dishes
+          </Text>
+          {trendingError ? (
+            <ErrorState message={trendingError.message} onRetry={refetchTrending} />
+          ) : trendingDishes.length === 0 ? (
+            <EmptyState type="trending_dishes" />
+          ) : (
+            <FlatList
+              data={trendingDishes}
+              keyExtractor={(item: TrendingDish) => item.id}
+              renderItem={({ item }: { item: TrendingDish }) => (
+                <DishCard dish={item} />
+              )}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16 }}
+            />
+          )}
+        </View>
+
+        {/* ── Top rated restaurants (2-column grid) ──────────── */}
+        <View className="mt-4 mb-6">
+          <Text className="font-[Karla_700Bold] text-base text-gray-900 px-4 mb-2">
+            Top Rated
+          </Text>
+          {topRatedError ? (
+            <ErrorState message={topRatedError.message} onRetry={refetchTopRated} />
+          ) : topRatedRestaurants.length === 0 ? (
+            <EmptyState
+              type="top_rated"
+              onCta={activeFilters.size > 0 ? clearFilters : undefined}
+            />
+          ) : (
+            <FlatList
+              data={topRatedRestaurants}
+              keyExtractor={(item: Restaurant) => item.id}
+              renderItem={({ item }: { item: Restaurant }) => (
+                <RestaurantCard restaurant={item} layout="grid" />
+              )}
+              numColumns={2}
+              scrollEnabled={false}
+              columnWrapperStyle={{ gap: 12, paddingHorizontal: 16 }}
+              contentContainerStyle={{ gap: 12 }}
+            />
+          )}
+        </View>
       </ScrollView>
+      )}
     </SafeAreaView>
   );
 }

@@ -14,7 +14,9 @@ jest.mock('react-native', () => ({
 import { supabase } from '@/lib/supabase';
 import {
   fetchMenuByRestaurant,
+  fetchTrendingDishes,
   type MenuCategoryWithItems,
+  type TrendingDish,
 } from '@/lib/api/menu';
 
 beforeEach(() => {
@@ -131,5 +133,86 @@ describe('fetchMenuByRestaurant', () => {
     expect(result).toHaveLength(2);
     expect(result[0].name).toBe('Pizzas');
     expect(result[1].name).toBe('Pastas');
+  });
+});
+
+// ── fetchTrendingDishes ──────────────────────────────────────────────────────
+
+const mockTrendingDish: TrendingDish = {
+  id: '11010000-0000-0000-0000-000000000001',
+  category_id: 'c1100000-0000-0000-0000-000000000001',
+  restaurant_id: RESTAURANT_ID,
+  name: 'Margherita',
+  description: 'Tomato, mozzarella, fresh basil',
+  price: 1200,
+  image_url: null,
+  dietary_tags: ['Vegan'],
+  prep_time_min: 15,
+  is_available: true,
+  deleted_at: null,
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+  restaurant: { name: 'La Bella Italia', slug: 'la-bella-italia' },
+};
+
+describe('fetchTrendingDishes', () => {
+  /** Helper: builds the mock chain for fetchTrendingDishes
+   *  from → select → is → eq → order → limit
+   */
+  function buildChain(resolvedValue: { data: TrendingDish[] | null; error: any }) {
+    const mockLimit = jest.fn().mockResolvedValue(resolvedValue);
+    const mockOrder = jest.fn().mockReturnValue({ limit: mockLimit });
+    const mockEq = jest.fn().mockReturnValue({ order: mockOrder });
+    const mockIs = jest.fn().mockReturnValue({ eq: mockEq });
+    const mockSelect = jest.fn().mockReturnValue({ is: mockIs });
+    jest.spyOn(supabase, 'from').mockReturnValue({ select: mockSelect } as any);
+    return { mockSelect, mockIs, mockEq, mockOrder, mockLimit };
+  }
+
+  it('returns trending dishes with restaurant relation', async () => {
+    const { mockSelect, mockIs, mockEq, mockOrder, mockLimit } = buildChain({
+      data: [mockTrendingDish],
+      error: null,
+    });
+
+    const result = await fetchTrendingDishes();
+
+    expect(supabase.from).toHaveBeenCalledWith('menu_items');
+    expect(mockSelect).toHaveBeenCalledWith(
+      '*, restaurant:restaurants!menu_items_restaurant_id_fkey(name, slug)',
+    );
+    expect(mockIs).toHaveBeenCalledWith('deleted_at', null);
+    expect(mockEq).toHaveBeenCalledWith('is_available', true);
+    expect(mockOrder).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(mockLimit).toHaveBeenCalledWith(10);
+    expect(result).toEqual([mockTrendingDish]);
+    expect(result[0].restaurant.name).toBe('La Bella Italia');
+  });
+
+  it('returns empty array when no dishes exist', async () => {
+    buildChain({ data: [], error: null });
+
+    const result = await fetchTrendingDishes();
+
+    expect(result).toEqual([]);
+  });
+
+  it('returns empty array when data is null', async () => {
+    buildChain({ data: null, error: null });
+
+    const result = await fetchTrendingDishes();
+
+    expect(result).toEqual([]);
+  });
+
+  it('throws on database error', async () => {
+    buildChain({
+      data: null,
+      error: { message: 'relation not found', code: '42P01' },
+    });
+
+    await expect(fetchTrendingDishes()).rejects.toMatchObject({
+      message: 'relation not found',
+    });
   });
 });

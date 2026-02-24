@@ -47,6 +47,53 @@ export async function fetchNearbyRestaurants(
 }
 
 /**
+ * Fetch featured restaurants (all active, ordered by rating).
+ * Used on the home screen featured carousel.
+ */
+export async function fetchFeaturedRestaurants(): Promise<Restaurant[]> {
+  const { data, error } = await supabase
+    .from('restaurants')
+    .select('*')
+    .is('deleted_at', null)
+    .eq('is_open', true)
+    .order('rating', { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Fetch active restaurants filtered by cuisine type.
+ * Used when tapping a cuisine category on the home screen.
+ */
+export async function fetchRestaurantsByCuisine(
+  cuisineType: string,
+): Promise<Restaurant[]> {
+  const { data, error } = await supabase
+    .from('restaurants')
+    .select('*')
+    .eq('cuisine_type', cuisineType)
+    .is('deleted_at', null)
+    .order('rating', { ascending: false });
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Fetch top rated restaurants ordered by rating (includes closed ones).
+ * Used on the home screen top-rated 2-column grid.
+ */
+export async function fetchTopRatedRestaurants(): Promise<Restaurant[]> {
+  const { data, error } = await supabase
+    .from('restaurants')
+    .select('*')
+    .is('deleted_at', null)
+    .order('rating', { ascending: false })
+    .limit(10);
+  if (error) throw error;
+  return data ?? [];
+}
+
+/**
  * Fetch a single active restaurant by its URL-friendly slug.
  * Returns null when not found (caller decides how to handle 404).
  */
