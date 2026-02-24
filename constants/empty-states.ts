@@ -16,6 +16,8 @@ export type EmptyStateType =
   | 'surprise_me'           // Epic 2: no restaurants match filters for surprise
   | 'restaurant_listing'           // Epic 3: no restaurants available on listing
   | 'restaurant_listing_filtered'  // Epic 3: no restaurants match applied filters
+  | 'restaurant_menu_empty'        // Epic 4: restaurant has no menu items
+  | 'restaurant_reviews_empty'     // Epic 4: restaurant has no reviews
   | 'promotions';                  // Epic 7: no active promotions
 
 export interface EmptyStateConfig {
@@ -118,6 +120,16 @@ export const EMPTY_STATES: Record<EmptyStateType, EmptyStateConfig> = {
     message: 'Try adjusting or clearing your filters.',
     iconName: 'FilterX',
     ctaLabel: 'Clear filters',
+  },
+  restaurant_menu_empty: {
+    title: 'No menu items yet',
+    message: 'This restaurant hasn\'t added their menu yet. Check back soon!',
+    iconName: 'UtensilsCrossed',
+  },
+  restaurant_reviews_empty: {
+    title: 'No reviews yet',
+    message: 'Be the first to review this restaurant after placing an order.',
+    iconName: 'MessageSquare',
   },
   promotions: {
     title: 'No active promotions',

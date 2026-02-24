@@ -2,6 +2,7 @@ import { View, Text, Pressable } from 'react-native';
 import {
   MapPin, Star, TrendingUp, Award, Search, Heart,
   ClipboardList, Clock, Bell, ChefHat, UtensilsCrossed, Tag, Sparkles, FilterX,
+  MessageSquare,
   type LucideProps,
 } from 'lucide-react-native';
 import { type ComponentType } from 'react';
@@ -12,6 +13,7 @@ import { EMPTY_STATES, type EmptyStateType } from '@/constants/empty-states';
 const ICON_MAP: Record<string, ComponentType<LucideProps>> = {
   MapPin, Star, TrendingUp, Award, Search, Heart,
   ClipboardList, Clock, Bell, ChefHat, UtensilsCrossed, Tag, Sparkles, FilterX,
+  MessageSquare,
 };
 
 interface EmptyStateProps {

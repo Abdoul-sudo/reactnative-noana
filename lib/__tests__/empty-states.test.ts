@@ -18,13 +18,15 @@ const ALL_TYPES: EmptyStateType[] = [
   'owner_menu',
   'restaurant_listing',
   'restaurant_listing_filtered',
+  'restaurant_menu_empty',
+  'restaurant_reviews_empty',
   'surprise_me',
   'promotions',
 ];
 
 describe('EMPTY_STATES config', () => {
-  it('has an entry for all 18 EmptyStateType values', () => {
-    expect(Object.keys(EMPTY_STATES)).toHaveLength(18);
+  it('has an entry for all 20 EmptyStateType values', () => {
+    expect(Object.keys(EMPTY_STATES)).toHaveLength(20);
     ALL_TYPES.forEach(type => {
       expect(EMPTY_STATES[type]).toBeDefined();
     });
