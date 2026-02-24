@@ -37,6 +37,11 @@ export function HomeSkeleton() {
         </View>
       </View>
 
+      {/* ── Surprise Me button skeleton ────────────────────── */}
+      <View className="px-4 mt-4">
+        <Skeleton className="h-16 rounded-2xl w-full" />
+      </View>
+
       {/* ── Featured restaurants section ───────────────────── */}
       <View className="px-4 py-2">
         <Skeleton className="h-5 rounded-md mb-3" style={{ width: 176 }} />

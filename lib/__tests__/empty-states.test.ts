@@ -13,12 +13,13 @@ const ALL_TYPES: EmptyStateType[] = [
   'notifications',
   'owner_orders',
   'owner_menu',
+  'surprise_me',
   'promotions',
 ];
 
 describe('EMPTY_STATES config', () => {
-  it('has an entry for all 12 EmptyStateType values', () => {
-    expect(Object.keys(EMPTY_STATES)).toHaveLength(12);
+  it('has an entry for all 13 EmptyStateType values', () => {
+    expect(Object.keys(EMPTY_STATES)).toHaveLength(13);
     ALL_TYPES.forEach(type => {
       expect(EMPTY_STATES[type]).toBeDefined();
     });

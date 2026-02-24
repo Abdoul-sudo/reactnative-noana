@@ -17,6 +17,8 @@ import { useTrendingDishes } from '@/hooks/use-trending-dishes';
 import { useTopRatedRestaurants } from '@/hooks/use-top-rated-restaurants';
 import { type Restaurant } from '@/lib/api/restaurants';
 import { type TrendingDish } from '@/lib/api/menu';
+import { useSurpriseMe } from '@/hooks/use-surprise-me';
+import { SurpriseMeCard } from '@/components/home/surprise-me-card';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -42,6 +44,8 @@ export default function HomeScreen() {
     error: topRatedError,
     refetch: refetchTopRated,
   } = useTopRatedRestaurants(activeFilters);
+
+  const { surprise, trigger, reset, hasResults } = useSurpriseMe(trendingDishes);
 
   const isLoading = featuredLoading || trendingLoading || topRatedLoading;
 
@@ -125,6 +129,14 @@ export default function HomeScreen() {
           </Text>
           <CategoryScroll categories={categories} />
         </View>
+
+        {/* ── Surprise Me! ──────────────────────────────────── */}
+        <SurpriseMeCard
+          surprise={surprise}
+          hasResults={hasResults}
+          onTrigger={trigger}
+          onReset={reset}
+        />
 
         {/* ── Featured restaurants ────────────────────────────── */}
         <View className="mt-4">

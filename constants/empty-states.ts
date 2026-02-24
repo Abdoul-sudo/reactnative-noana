@@ -10,6 +10,7 @@ export type EmptyStateType =
   | 'notifications'         // Epic 2 header: no notifications
   | 'owner_orders'          // Epic 4: owner has no incoming orders
   | 'owner_menu'            // Epic 7: owner menu is empty
+  | 'surprise_me'           // Epic 2: no restaurants match filters for surprise
   | 'promotions';           // Epic 7: no active promotions
 
 export interface EmptyStateConfig {
@@ -79,6 +80,12 @@ export const EMPTY_STATES: Record<EmptyStateType, EmptyStateConfig> = {
     message: 'Add categories and items to start accepting orders.',
     iconName: 'UtensilsCrossed',
     ctaLabel: 'Add menu item',
+  },
+  surprise_me: {
+    title: 'No recommendations available',
+    message: 'Try adjusting your dietary filters to discover something new.',
+    iconName: 'Sparkles',
+    ctaLabel: 'Clear filters',
   },
   promotions: {
     title: 'No active promotions',
