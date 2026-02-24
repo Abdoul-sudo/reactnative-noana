@@ -277,7 +277,40 @@ INSERT INTO public.trending_searches (id, query, display_order) VALUES
 -- -----------------------------------------------------------------------------
 -- 4. Social: reviews, favorites
 -- -----------------------------------------------------------------------------
--- (Added when social tables are created in Epic 5)
+-- Demo reviews spread across restaurants with varying ratings.
+-- Uses seeded user UUIDs: customer (a1b2c3d4-...) and owner (b2c3d4e5-...).
+
+INSERT INTO public.reviews (id, restaurant_id, user_id, rating, comment, created_at) VALUES
+  -- La Bella Italia (3 reviews)
+  ('r1000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001',
+   'a1b2c3d4-e5f6-7890-abcd-ef1234567890', 5,
+   'Best pizza in Algiers! The Margherita is perfection.', '2026-02-10T12:00:00Z'),
+  ('r2000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001',
+   'b2c3d4e5-f6a7-8901-bcde-f12345678901', 4,
+   'Great pasta, cozy atmosphere. Slightly slow service.', '2026-02-15T18:30:00Z'),
+  ('r3000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000001',
+   'a1b2c3d4-e5f6-7890-abcd-ef1234567890', 4, NULL, '2026-02-20T09:15:00Z'),
+
+  -- Dragon Wok (2 reviews)
+  ('r4000000-0000-0000-0000-000000000004', 'a2000000-0000-0000-0000-000000000002',
+   'a1b2c3d4-e5f6-7890-abcd-ef1234567890', 5,
+   'The Pad Thai is incredible. Fresh and authentic!', '2026-02-12T14:00:00Z'),
+  ('r5000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000002',
+   'b2c3d4e5-f6a7-8901-bcde-f12345678901', 3,
+   'Decent food but portions could be bigger.', '2026-02-18T20:00:00Z'),
+
+  -- Burger Palace (2 reviews)
+  ('r6000000-0000-0000-0000-000000000006', 'a3000000-0000-0000-0000-000000000003',
+   'a1b2c3d4-e5f6-7890-abcd-ef1234567890', 4,
+   'Juicy burgers, fast delivery. Will order again!', '2026-02-14T11:30:00Z'),
+  ('r7000000-0000-0000-0000-000000000007', 'a3000000-0000-0000-0000-000000000003',
+   'b2c3d4e5-f6a7-8901-bcde-f12345678901', 2,
+   'Burger was cold on arrival. Disappointing experience.', '2026-02-22T19:00:00Z'),
+
+  -- Méditerranée (1 review)
+  ('r8000000-0000-0000-0000-000000000008', 'a4000000-0000-0000-0000-000000000004',
+   'a1b2c3d4-e5f6-7890-abcd-ef1234567890', 5,
+   'Outstanding lamb chops and the hummus is divine. Premium quality.', '2026-02-08T13:45:00Z');
 
 -- -----------------------------------------------------------------------------
 -- 5. Growth: promotions, loyalty_transactions, operating_hours
