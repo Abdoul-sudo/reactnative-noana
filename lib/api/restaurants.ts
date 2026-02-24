@@ -93,6 +93,59 @@ export async function fetchTopRatedRestaurants(): Promise<Restaurant[]> {
   return data ?? [];
 }
 
+const PAGE_SIZE = 20;
+
+export type PaginatedFilters = {
+  page?: number;
+  limit?: number;
+  cuisine?: string;
+  priceRange?: string;
+  minRating?: number;
+  maxDeliveryTime?: number;
+};
+
+export type PaginatedResult = {
+  data: Restaurant[];
+  hasMore: boolean;
+};
+
+/**
+ * Fetch restaurants with pagination and optional server-side filters.
+ * Uses .range() with { count: 'exact' } to determine hasMore.
+ */
+export async function fetchRestaurantsPaginated(
+  filters: PaginatedFilters = {},
+): Promise<PaginatedResult> {
+  const { page = 0, limit = PAGE_SIZE, cuisine, priceRange, minRating, maxDeliveryTime } = filters;
+  const from = page * limit;
+  const to = from + limit - 1;
+
+  let query = supabase
+    .from('restaurants')
+    .select('*', { count: 'exact' })
+    .is('deleted_at', null);
+
+  if (cuisine) {
+    query = query.eq('cuisine_type', cuisine);
+  }
+  if (priceRange) {
+    query = query.eq('price_range', priceRange);
+  }
+  if (minRating != null) {
+    query = query.gte('rating', minRating);
+  }
+  if (maxDeliveryTime != null) {
+    query = query.lte('delivery_time_min', maxDeliveryTime);
+  }
+
+  const { data, error, count } = await query
+    .order('rating', { ascending: false })
+    .range(from, to);
+
+  if (error) throw error;
+  return { data: data ?? [], hasMore: (count ?? 0) > to + 1 };
+}
+
 /**
  * Fetch a single active restaurant by its URL-friendly slug.
  * Returns null when not found (caller decides how to handle 404).

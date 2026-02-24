@@ -123,7 +123,11 @@ export default function SearchScreen() {
 
     const isEmpty = restaurants.length === 0 && dishes.length === 0;
 
-    if (isEmpty) return <EmptyState type="search_results" />;
+    if (isEmpty) {
+      return activeFilters.size > 0
+        ? <EmptyState type="search_results_filtered" />
+        : <EmptyState type="search_results" />;
+    }
 
     return (
       <View className="flex-1">
@@ -176,7 +180,8 @@ export default function SearchScreen() {
             renderItem={({ item }: { item: Restaurant }) => (
               <RestaurantSearchRow restaurant={item} />
             )}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8 }}
+            ListEmptyComponent={<EmptyState type="search_restaurants_empty" />}
+            contentContainerStyle={restaurants.length === 0 ? { flex: 1 } : { paddingHorizontal: 16, paddingTop: 8 }}
             showsVerticalScrollIndicator={false}
           />
         ) : (
@@ -186,7 +191,8 @@ export default function SearchScreen() {
             renderItem={({ item }: { item: TrendingDish }) => (
               <DishSearchRow dish={item} />
             )}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8 }}
+            ListEmptyComponent={<EmptyState type="search_dishes_empty" />}
+            contentContainerStyle={dishes.length === 0 ? { flex: 1 } : { paddingHorizontal: 16, paddingTop: 8 }}
             showsVerticalScrollIndicator={false}
           />
         )}

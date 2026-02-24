@@ -3,7 +3,10 @@ export type EmptyStateType =
   | 'featured_restaurants'  // Epic 2: no featured restaurants
   | 'trending_dishes'       // Epic 2: no trending dishes
   | 'top_rated'             // Epic 2: no top-rated matches after filter
-  | 'search_results'        // Epic 3: no search results
+  | 'search_results'        // Epic 3: no search results (both tabs empty)
+  | 'search_results_filtered' // Epic 3: no results because dietary filters are too restrictive
+  | 'search_restaurants_empty' // Epic 3: no restaurants in search, but dishes exist
+  | 'search_dishes_empty'     // Epic 3: no dishes in search, but restaurants exist
   | 'favorites'             // Epic 5: no saved favorites
   | 'orders'                // Epic 4: no active orders (customer)
   | 'order_history'         // Epic 4: no past orders
@@ -11,7 +14,9 @@ export type EmptyStateType =
   | 'owner_orders'          // Epic 4: owner has no incoming orders
   | 'owner_menu'            // Epic 7: owner menu is empty
   | 'surprise_me'           // Epic 2: no restaurants match filters for surprise
-  | 'promotions';           // Epic 7: no active promotions
+  | 'restaurant_listing'           // Epic 3: no restaurants available on listing
+  | 'restaurant_listing_filtered'  // Epic 3: no restaurants match applied filters
+  | 'promotions';                  // Epic 7: no active promotions
 
 export interface EmptyStateConfig {
   title: string;
@@ -46,6 +51,22 @@ export const EMPTY_STATES: Record<EmptyStateType, EmptyStateConfig> = {
   search_results: {
     title: 'No results found',
     message: 'Try a different search term or browse categories.',
+    iconName: 'Search',
+  },
+  search_results_filtered: {
+    title: 'No results with these filters',
+    message: 'Try removing some dietary filters to see more results.',
+    iconName: 'FilterX',
+    ctaLabel: 'Clear filters',
+  },
+  search_restaurants_empty: {
+    title: 'No restaurants found',
+    message: 'No restaurant matches for this search. Try the Dishes tab?',
+    iconName: 'UtensilsCrossed',
+  },
+  search_dishes_empty: {
+    title: 'No dishes found',
+    message: 'No dish matches for this search. Try the Restaurants tab?',
     iconName: 'Search',
   },
   favorites: {
@@ -85,6 +106,17 @@ export const EMPTY_STATES: Record<EmptyStateType, EmptyStateConfig> = {
     title: 'No recommendations available',
     message: 'Try adjusting your dietary filters to discover something new.',
     iconName: 'Sparkles',
+    ctaLabel: 'Clear filters',
+  },
+  restaurant_listing: {
+    title: 'No restaurants available',
+    message: 'Check back later for new listings.',
+    iconName: 'UtensilsCrossed',
+  },
+  restaurant_listing_filtered: {
+    title: 'No matches with these filters',
+    message: 'Try adjusting or clearing your filters.',
+    iconName: 'FilterX',
     ctaLabel: 'Clear filters',
   },
   promotions: {

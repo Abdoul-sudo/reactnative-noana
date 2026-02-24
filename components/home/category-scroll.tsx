@@ -2,9 +2,9 @@ import { FlatList, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { type CuisineCategory } from '@/constants/cuisines';
 
-interface CategoryScrollProps {
+type CategoryScrollProps = {
   categories: CuisineCategory[];
-}
+};
 
 function CategoryItem({ item }: { item: CuisineCategory }) {
   const router = useRouter();
@@ -13,8 +13,7 @@ function CategoryItem({ item }: { item: CuisineCategory }) {
   return (
     <Pressable
       onPress={() =>
-        // TODO 3.1: search screen reads cuisine param from route
-        router.navigate({ pathname: '/(tabs)/search', params: { cuisine: item.id } })
+        router.push({ pathname: '/restaurants', params: { cuisine: item.id } })
       }
       accessibilityRole="button"
       accessibilityLabel={`${item.label} cuisine category`}

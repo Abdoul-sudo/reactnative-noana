@@ -1,7 +1,7 @@
 import { View, Text, Pressable } from 'react-native';
 import {
   MapPin, Star, TrendingUp, Award, Search, Heart,
-  ClipboardList, Clock, Bell, ChefHat, UtensilsCrossed, Tag, Sparkles,
+  ClipboardList, Clock, Bell, ChefHat, UtensilsCrossed, Tag, Sparkles, FilterX,
   type LucideProps,
 } from 'lucide-react-native';
 import { type ComponentType } from 'react';
@@ -11,7 +11,7 @@ import { EMPTY_STATES, type EmptyStateType } from '@/constants/empty-states';
 // Named imports allow Metro to tree-shake all other Lucide icons (~224KB saved).
 const ICON_MAP: Record<string, ComponentType<LucideProps>> = {
   MapPin, Star, TrendingUp, Award, Search, Heart,
-  ClipboardList, Clock, Bell, ChefHat, UtensilsCrossed, Tag, Sparkles,
+  ClipboardList, Clock, Bell, ChefHat, UtensilsCrossed, Tag, Sparkles, FilterX,
 };
 
 interface EmptyStateProps {
