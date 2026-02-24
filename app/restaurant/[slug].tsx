@@ -7,6 +7,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Plus, Minus, Star, MapPin, Phone, Globe } from 'lucide-react-native';
 import { Image } from 'expo-image';
 import { useCartStore } from '@/stores/cart-store';
+import { CartFloatingBar } from '@/components/cart/cart-floating-bar';
 import { RestaurantHeader } from '@/components/restaurant/restaurant-header';
 import { RestaurantDetailSkeleton } from '@/components/restaurant/restaurant-detail-skeleton';
 import { ErrorState } from '@/components/ui/error-state';
@@ -55,6 +56,9 @@ export default function RestaurantDetailScreen() {
     error,
     refetch,
   } = useRestaurantDetail(slug ?? '');
+
+  const cartItems = useCartStore((s) => s.items);
+  const cartRestaurantId = useCartStore((s) => s.restaurantId);
 
   // ── Loading state ────────────────────────────────────
   if (isLoading) {
@@ -137,6 +141,9 @@ export default function RestaurantDetailScreen() {
         sections={sections}
         keyExtractor={(item, index) => (item as MenuItem)?.id ?? `placeholder-${index}`}
         stickySectionHeadersEnabled
+        contentContainerStyle={{
+          paddingBottom: cartItems.length > 0 && cartRestaurantId === restaurant.id ? 72 : 0,
+        }}
         ListHeaderComponent={<RestaurantHeader restaurant={restaurant} />}
         renderSectionHeader={({ section }) => {
           if (section.key === 'tab-bar') {
@@ -193,6 +200,8 @@ export default function RestaurantDetailScreen() {
           />
         }
       />
+
+      <CartFloatingBar currentRestaurantId={restaurant.id} />
     </SafeAreaView>
   );
 }
