@@ -2,16 +2,17 @@ import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Image } from 'expo-image';
-import { Search, X, Clock, Star, TrendingUp, UtensilsCrossed } from 'lucide-react-native';
+import { Search, X, Star, TrendingUp, UtensilsCrossed } from 'lucide-react-native';
 import { useState, useRef } from 'react';
 import { useSearch } from '@/hooks/use-search';
 import { useRecentSearches } from '@/hooks/use-recent-searches';
+import { useTrendingSearches } from '@/hooks/use-trending-searches';
 import { useDietaryFilters } from '@/hooks/use-dietary-filters';
 import { DietaryFilterBar } from '@/components/home/dietary-filter-bar';
+import { SwipeableRecentItem } from '@/components/search/swipeable-recent-item';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { PreSearchSkeleton, ResultsSkeleton } from '@/components/search/search-skeleton';
-import { TRENDING_SEARCHES } from '@/constants/trending-searches';
 import { type Restaurant } from '@/lib/api/restaurants';
 import { type TrendingDish } from '@/lib/api/menu';
 
@@ -31,6 +32,7 @@ export default function SearchScreen() {
     clear: clearRecent,
     isLoading: isRecentLoading,
   } = useRecentSearches();
+  const { trending, isLoading: isTrendingLoading } = useTrendingSearches();
 
   const hasQuery = query.trim().length > 0;
 
@@ -58,10 +60,10 @@ export default function SearchScreen() {
   function renderPreSearchState() {
     return (
       <View className="flex-1 px-4 pt-2">
-        {/* Recent searches */}
+        {/* Recent searches — vertical swipeable list */}
         {recentSearches.length > 0 && (
-          <View className="mb-5">
-            <View className="flex-row items-center justify-between mb-2">
+          <View className="mb-4">
+            <View className="flex-row items-center justify-between mb-1">
               <Text className="font-[Karla_700Bold] text-base text-gray-900">
                 Recent
               </Text>
@@ -77,40 +79,25 @@ export default function SearchScreen() {
             <FlatList
               data={recentSearches}
               keyExtractor={(item) => item}
-              horizontal
-              showsHorizontalScrollIndicator={false}
+              scrollEnabled={false}
               renderItem={({ item }) => (
-                <Pressable
+                <SwipeableRecentItem
+                  label={item}
                   onPress={() => handleTapRecent(item)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Recent search: ${item}`}
-                  className="flex-row items-center bg-gray-100 rounded-full px-3 py-2 mr-2"
-                >
-                  <Clock size={14} color="#6b7280" />
-                  <Text className="font-[Karla_400Regular] text-sm text-gray-700 ml-1.5">
-                    {item}
-                  </Text>
-                  <Pressable
-                    onPress={() => removeRecent(item)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Remove ${item} from recent searches`}
-                    className="ml-2 p-0.5"
-                    hitSlop={8}
-                  >
-                    <X size={12} color="#9ca3af" />
-                  </Pressable>
-                </Pressable>
+                  onRemove={() => removeRecent(item)}
+                />
               )}
+              ItemSeparatorComponent={() => <View className="h-px bg-gray-100" />}
             />
           </View>
         )}
 
-        {/* Trending searches */}
+        {/* Trending searches — wrapped chips from DB */}
         <Text className="font-[Karla_700Bold] text-base text-gray-900 mb-2">
           Trending
         </Text>
         <View className="flex-row flex-wrap gap-2">
-          {TRENDING_SEARCHES.map((item) => (
+          {trending.map((item) => (
             <Pressable
               key={item.id}
               onPress={() => handleTapTrending(item.label)}
@@ -134,7 +121,6 @@ export default function SearchScreen() {
     if (isLoading) return <ResultsSkeleton />;
     if (error) return <ErrorState message={error.message} onRetry={refetch} />;
 
-    const activeData = activeTab === 'restaurants' ? restaurants : dishes;
     const isEmpty = restaurants.length === 0 && dishes.length === 0;
 
     if (isEmpty) return <EmptyState type="search_results" />;
@@ -242,7 +228,7 @@ export default function SearchScreen() {
       {/* ── Content ───────────────────────────────────────────── */}
       {hasQuery
         ? renderPostSearchState()
-        : isRecentLoading
+        : (isRecentLoading || isTrendingLoading)
           ? <PreSearchSkeleton />
           : renderPreSearchState()}
     </SafeAreaView>

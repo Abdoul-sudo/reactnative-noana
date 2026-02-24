@@ -254,6 +254,22 @@ INSERT INTO public.menu_items (
    'Seafood Couscous', 'Traditional couscous, mixed seafood, harissa broth', 2600, '["Halal"]'::jsonb, 30, false);
 
 -- -----------------------------------------------------------------------------
+-- 2b. Search: trending_searches
+-- -----------------------------------------------------------------------------
+-- Static trending terms displayed on the search screen before the user types.
+-- display_order controls the presentation order in the UI.
+
+INSERT INTO public.trending_searches (id, query, display_order) VALUES
+  ('t1000000-0000-0000-0000-000000000001', 'Pizza',      1),
+  ('t2000000-0000-0000-0000-000000000002', 'Burger',     2),
+  ('t3000000-0000-0000-0000-000000000003', 'Couscous',   3),
+  ('t4000000-0000-0000-0000-000000000004', 'Shawarma',   4),
+  ('t5000000-0000-0000-0000-000000000005', 'Grillades',  5),
+  ('t6000000-0000-0000-0000-000000000006', 'Bourek',     6),
+  ('t7000000-0000-0000-0000-000000000007', 'Tajine',     7),
+  ('t8000000-0000-0000-0000-000000000008', 'Sushi',      8);
+
+-- -----------------------------------------------------------------------------
 -- 3. Orders: orders, order_items, addresses
 -- -----------------------------------------------------------------------------
 -- (Added when order tables are created in Epic 4)

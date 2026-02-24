@@ -1,8 +1,8 @@
 import { TRENDING_SEARCHES } from '@/constants/trending-searches';
 
 describe('TRENDING_SEARCHES', () => {
-  it('has 6 entries', () => {
-    expect(TRENDING_SEARCHES).toHaveLength(6);
+  it('has 8 entries', () => {
+    expect(TRENDING_SEARCHES).toHaveLength(8);
   });
 
   it('each entry has a non-empty id', () => {
