@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { SectionList, View, Text, Pressable, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, Plus, Minus } from 'lucide-react-native';
+import { useCartStore } from '@/stores/cart-store';
 import { RestaurantHeader } from '@/components/restaurant/restaurant-header';
 import { RestaurantDetailSkeleton } from '@/components/restaurant/restaurant-detail-skeleton';
 import { ErrorState } from '@/components/ui/error-state';
@@ -264,13 +265,19 @@ function DetailTabBar({ activeTab, onTabChange }: DetailTabBarProps) {
   );
 }
 
-// ── Menu item row (display only — add-to-cart in Story 4.2) ─────────────────
+// ── Menu item row with add-to-cart ───────────────────────────────────────────
 
 function MenuItemRow({ item }: { item: MenuItem }) {
   const dietaryTags = Array.isArray(item.dietary_tags)
     ? (item.dietary_tags as string[])
     : [];
   const isUnavailable = item.is_available === false;
+
+  const quantity = useCartStore(
+    (s) => s.items.find((i) => i.id === item.id)?.quantity ?? 0,
+  );
+  const addItem = useCartStore((s) => s.addItem);
+  const updateQuantity = useCartStore((s) => s.updateQuantity);
 
   return (
     <View
@@ -318,13 +325,61 @@ function MenuItemRow({ item }: { item: MenuItem }) {
           )}
         </View>
 
-        {/* Price */}
-        <Text className="font-[Karla_700Bold] text-base text-gray-900">
-          {item.price} DA
-        </Text>
+        {/* Price + cart controls */}
+        <View className="items-end">
+          <Text className="font-[Karla_700Bold] text-base text-gray-900">
+            {item.price} DA
+          </Text>
+
+          {!isUnavailable && quantity === 0 && (
+            <Pressable
+              onPress={() =>
+                addItem({
+                  id: item.id,
+                  name: item.name,
+                  price: item.price,
+                  restaurant_id: item.restaurant_id,
+                })
+              }
+              accessibilityRole="button"
+              accessibilityLabel={`Add ${item.name} to cart`}
+              className="mt-2 bg-red-600 rounded-full px-4 py-1.5"
+            >
+              <Text className="font-[Karla_600SemiBold] text-sm text-white">
+                Add
+              </Text>
+            </Pressable>
+          )}
+
+          {!isUnavailable && quantity > 0 && (
+            <View className="flex-row items-center mt-2 gap-3">
+              <Pressable
+                onPress={() => updateQuantity(item.id, quantity - 1)}
+                accessibilityRole="button"
+                accessibilityLabel={`Decrease quantity of ${item.name}`}
+                className="w-7 h-7 rounded-full bg-gray-100 items-center justify-center"
+              >
+                <Minus size={16} color="#374151" />
+              </Pressable>
+
+              <Text className="font-[Karla_700Bold] text-sm text-gray-900 min-w-[20px] text-center">
+                {quantity}
+              </Text>
+
+              <Pressable
+                onPress={() => updateQuantity(item.id, quantity + 1)}
+                accessibilityRole="button"
+                accessibilityLabel={`Increase quantity of ${item.name}`}
+                className="w-7 h-7 rounded-full bg-red-600 items-center justify-center"
+              >
+                <Plus size={16} color="#ffffff" />
+              </Pressable>
+            </View>
+          )}
+        </View>
       </View>
 
-      {/* Unavailable overlay */}
+      {/* Unavailable label */}
       {isUnavailable && (
         <Text className="font-[Karla_600SemiBold] text-xs text-red-500 mt-1">
           Unavailable
