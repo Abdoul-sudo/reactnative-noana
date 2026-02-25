@@ -16,3 +16,18 @@ export async function updateProfile(
     .eq('id', userId);
   if (error) throw error;
 }
+
+/**
+ * Store the Expo push token in the user's profile.
+ * Called after notification permission is granted on app launch.
+ */
+export async function updatePushToken(
+  userId: string,
+  pushToken: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('profiles')
+    .update({ push_token: pushToken })
+    .eq('id', userId);
+  if (error) throw error;
+}

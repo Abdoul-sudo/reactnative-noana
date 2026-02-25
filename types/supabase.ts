@@ -267,6 +267,7 @@ export type Database = {
           email: string | null
           id: string
           onboarding_completed: boolean | null
+          push_token: string | null
           role: string
           updated_at: string | null
         }
@@ -279,6 +280,7 @@ export type Database = {
           email?: string | null
           id: string
           onboarding_completed?: boolean | null
+          push_token?: string | null
           role?: string
           updated_at?: string | null
         }
@@ -291,6 +293,7 @@ export type Database = {
           email?: string | null
           id?: string
           onboarding_completed?: boolean | null
+          push_token?: string | null
           role?: string
           updated_at?: string | null
         }

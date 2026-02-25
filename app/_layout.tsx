@@ -25,6 +25,10 @@ import NetInfo from '@react-native-community/netinfo';
 import { useNetwork } from '@/hooks/use-network';
 import { useAuthStore } from '@/stores/auth-store';
 import { NoConnection } from '@/components/ui/no-connection';
+import {
+  registerForPushNotificationsAsync,
+  setupNotificationListeners,
+} from '@/lib/notifications';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -71,6 +75,21 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, isHydrated, isOfflineAtLaunch]);
+
+  // Register push notifications after auth hydration
+  useEffect(() => {
+    if (!isHydrated || !session) return;
+
+    registerForPushNotificationsAsync(session.user.id).catch(() => {
+      // Graceful degradation — app works without push notifications
+    });
+  }, [isHydrated, session]);
+
+  // Listen for notification taps → navigate to order tracking
+  useEffect(() => {
+    const cleanup = setupNotificationListeners();
+    return cleanup;
+  }, []);
 
   // Auth guard — single redirect logic, runs only after hydration
   useEffect(() => {
