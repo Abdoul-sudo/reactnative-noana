@@ -1,12 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, Pressable, Linking, RefreshControl } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Phone, MapPin, Clock } from 'lucide-react-native';
+import { type BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useOrderTracking } from '@/hooks/use-order-tracking';
 import { OrderStatusStepper } from '@/components/order/order-status-stepper';
+import { ReviewFormSheet } from '@/components/review/review-form-sheet';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ErrorState } from '@/components/ui/error-state';
+import { ORDER_STATUS } from '@/constants/order-status';
+import { hasUserReviewedRestaurant } from '@/lib/api/reviews';
 import { type OrderItem, type DeliveryAddress } from '@/lib/api/orders';
 
 export default function OrderTrackingScreen() {
@@ -15,6 +19,19 @@ export default function OrderTrackingScreen() {
   const insets = useSafeAreaInsets();
   const { order, isLoading, error, refetch } = useOrderTracking(id!);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [hasReviewed, setHasReviewed] = useState(false);
+  const reviewSheetRef = useRef<BottomSheetModal>(null);
+
+  // Check if the user already reviewed this restaurant (prevents duplicate reviews on revisit)
+  useEffect(() => {
+    if (!order || order.status !== ORDER_STATUS.DELIVERED) return;
+
+    hasUserReviewedRestaurant(order.user_id, order.restaurant_id).then(
+      (reviewed) => {
+        if (reviewed) setHasReviewed(true);
+      },
+    );
+  }, [order?.id, order?.status]);
 
   async function handleRefresh() {
     setIsRefreshing(true);
@@ -252,7 +269,36 @@ export default function OrderTrackingScreen() {
             </Pressable>
           )}
         </View>
+
+        {/* ── Leave a Review (only when delivered) ── */}
+        {order.status === ORDER_STATUS.DELIVERED && !hasReviewed && (
+          <Pressable
+            onPress={() => reviewSheetRef.current?.present()}
+            accessibilityRole="button"
+            accessibilityLabel="Leave a review for this restaurant"
+            className="mx-4 mb-4 bg-red-600 rounded-full py-3"
+          >
+            <Text className="font-[Karla_700Bold] text-base text-white text-center">
+              Leave a Review
+            </Text>
+          </Pressable>
+        )}
+
+        {hasReviewed && (
+          <View className="mx-4 mb-4 bg-green-50 border border-green-200 rounded-xl py-3 px-4">
+            <Text className="font-[Karla_600SemiBold] text-sm text-green-700 text-center">
+              Thank you for your review!
+            </Text>
+          </View>
+        )}
       </ScrollView>
+
+      {/* Review bottom sheet — rendered outside ScrollView */}
+      <ReviewFormSheet
+        ref={reviewSheetRef}
+        restaurantId={order.restaurant_id}
+        onSuccess={() => setHasReviewed(true)}
+      />
     </View>
   );
 }
