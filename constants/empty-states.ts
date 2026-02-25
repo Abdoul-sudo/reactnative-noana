@@ -18,6 +18,7 @@ export type EmptyStateType =
   | 'restaurant_listing_filtered'  // Epic 3: no restaurants match applied filters
   | 'restaurant_menu_empty'        // Epic 4: restaurant has no menu items
   | 'restaurant_reviews_empty'     // Epic 4: restaurant has no reviews
+  | 'addresses'                    // Epic 5: no saved delivery addresses
   | 'promotions';                  // Epic 7: no active promotions
 
 export interface EmptyStateConfig {
@@ -28,6 +29,12 @@ export interface EmptyStateConfig {
 }
 
 export const EMPTY_STATES: Record<EmptyStateType, EmptyStateConfig> = {
+  addresses: {
+    title: 'No saved addresses',
+    message: 'Add a delivery address to get started.',
+    iconName: 'MapPin',
+    ctaLabel: 'Add first address',
+  },
   nearby_restaurants: {
     title: 'No restaurants nearby',
     message: 'Try expanding your search radius or changing your location.',

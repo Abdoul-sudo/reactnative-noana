@@ -12,7 +12,10 @@
   },
   "jest": {
     "preset": "jest-expo",
-    "setupFiles": ["./jest.setup.ts"]
+    "setupFiles": ["./jest.setup.ts"],
+    "moduleNameMapper": {
+      "^react-native-css-interop$": "<rootDir>/__mocks__/react-native-css-interop.js"
+    }
   },
   "dependencies": {
     "@expo-google-fonts/karla": "^0.4.2",

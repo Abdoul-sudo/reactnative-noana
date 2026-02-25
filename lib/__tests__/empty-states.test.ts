@@ -2,6 +2,7 @@
 import { EMPTY_STATES, type EmptyStateType } from '@/constants/empty-states';
 
 const ALL_TYPES: EmptyStateType[] = [
+  'addresses',
   'nearby_restaurants',
   'featured_restaurants',
   'trending_dishes',
@@ -25,8 +26,8 @@ const ALL_TYPES: EmptyStateType[] = [
 ];
 
 describe('EMPTY_STATES config', () => {
-  it('has an entry for all 20 EmptyStateType values', () => {
-    expect(Object.keys(EMPTY_STATES)).toHaveLength(20);
+  it('has an entry for all 21 EmptyStateType values', () => {
+    expect(Object.keys(EMPTY_STATES)).toHaveLength(21);
     ALL_TYPES.forEach(type => {
       expect(EMPTY_STATES[type]).toBeDefined();
     });
