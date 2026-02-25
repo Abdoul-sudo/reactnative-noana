@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  SectionList, View, Text, Pressable, RefreshControl, Linking, ActivityIndicator, Alert,
+  SectionList, View, Text, Pressable, RefreshControl, Linking, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -240,7 +240,10 @@ export default function RestaurantDetailScreen() {
 
       <CartBottomSheet
         ref={cartSheetRef}
-        onCheckout={() => Alert.alert('Checkout', 'Checkout flow coming in Story 5.4')}
+        onCheckout={() => {
+          cartSheetRef.current?.dismiss();
+          router.push('/checkout');
+        }}
       />
     </SafeAreaView>
   );
