@@ -270,9 +270,65 @@ INSERT INTO public.trending_searches (id, query, display_order) VALUES
   ('t8000000-0000-0000-0000-000000000008', 'Sushi',      8);
 
 -- -----------------------------------------------------------------------------
--- 3. Orders: orders, order_items, addresses
+-- 3. Addresses & Orders
 -- -----------------------------------------------------------------------------
--- (Added when order tables are created in Epic 4)
+-- Sample delivery addresses for the test customer.
+-- One marked as default for the checkout flow.
+
+INSERT INTO public.addresses (id, user_id, label, address, city, lat, lng, is_default) VALUES
+  ('d1000000-0000-0000-0000-000000000001',
+   'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+   'Home', '45 Rue Abane Ramdane, Alger', 'Alger', 36.7538, 3.0588, true),
+  ('d2000000-0000-0000-0000-000000000002',
+   'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+   'Work', '12 Boulevard Mohamed V, Alger', 'Alger', 36.7400, 3.0700, false);
+
+-- Sample orders for the test customer. Mix of statuses:
+-- 1 delivered (La Bella Italia), 1 placed (Dragon Wok), 1 preparing (Burger Palace).
+
+INSERT INTO public.orders (
+  id, user_id, restaurant_id, status,
+  items, delivery_address,
+  subtotal, delivery_fee, total,
+  special_instructions,
+  placed_at, confirmed_at, preparing_at, delivered_at
+) VALUES
+  -- Delivered order from La Bella Italia
+  (
+    'o1000000-0000-0000-0000-000000000001',
+    'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+    'a1000000-0000-0000-0000-000000000001',
+    'delivered',
+    '[{"menu_item_id":"11010000-0000-0000-0000-000000000001","name":"Margherita","price":1200,"quantity":2,"dietary_tags":["Vegan"]},{"menu_item_id":"12020000-0000-0000-0000-000000000001","name":"Penne Arrabbiata","price":950,"quantity":1,"dietary_tags":["Vegan"]}]'::jsonb,
+    '{"label":"Home","address":"45 Rue Abane Ramdane, Alger","city":"Alger","lat":36.7538,"lng":3.0588}'::jsonb,
+    3350, 200, 3550,
+    'Extra basil on the pizzas please',
+    '2026-02-18T12:00:00Z', '2026-02-18T12:05:00Z', '2026-02-18T12:10:00Z', '2026-02-18T12:40:00Z'
+  ),
+  -- Placed order from Dragon Wok (just placed, not confirmed yet)
+  (
+    'o2000000-0000-0000-0000-000000000002',
+    'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+    'a2000000-0000-0000-0000-000000000002',
+    'placed',
+    '[{"menu_item_id":"21010000-0000-0000-0000-000000000002","name":"Pad Thai","price":1100,"quantity":1,"dietary_tags":["Halal","Gluten-free"]},{"menu_item_id":"22010000-0000-0000-0000-000000000002","name":"Chicken Dumplings (6)","price":800,"quantity":2,"dietary_tags":["Halal"]}]'::jsonb,
+    '{"label":"Work","address":"12 Boulevard Mohamed V, Alger","city":"Alger","lat":36.7400,"lng":3.0700}'::jsonb,
+    2700, 150, 2850,
+    NULL,
+    '2026-02-25T10:30:00Z', NULL, NULL, NULL
+  ),
+  -- Preparing order from Burger Palace
+  (
+    'o3000000-0000-0000-0000-000000000003',
+    'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+    'a3000000-0000-0000-0000-000000000003',
+    'preparing',
+    '[{"menu_item_id":"31010000-0000-0000-0000-000000000003","name":"Classic Smash","price":1100,"quantity":1,"dietary_tags":["Halal"]},{"menu_item_id":"32010000-0000-0000-0000-000000000003","name":"Loaded Fries","price":600,"quantity":1,"dietary_tags":["Halal"]}]'::jsonb,
+    '{"label":"Home","address":"45 Rue Abane Ramdane, Alger","city":"Alger","lat":36.7538,"lng":3.0588}'::jsonb,
+    1700, 100, 1800,
+    NULL,
+    '2026-02-25T11:00:00Z', '2026-02-25T11:03:00Z', '2026-02-25T11:08:00Z', NULL
+  );
 
 -- -----------------------------------------------------------------------------
 -- 4. Social: reviews, favorites

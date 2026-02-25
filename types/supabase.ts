@@ -34,6 +34,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      addresses: {
+        Row: {
+          id: string
+          user_id: string
+          label: string
+          address: string
+          city: string
+          lat: number | null
+          lng: number | null
+          is_default: boolean | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          label?: string
+          address: string
+          city: string
+          lat?: number | null
+          lng?: number | null
+          is_default?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          label?: string
+          address?: string
+          city?: string
+          lat?: number | null
+          lng?: number | null
+          is_default?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "addresses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       menu_categories: {
         Row: {
           created_at: string | null
@@ -125,6 +172,84 @@ export type Database = {
           },
           {
             foreignKeyName: "menu_items_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          id: string
+          user_id: string
+          restaurant_id: string
+          status: string
+          items: Json
+          delivery_address: Json
+          subtotal: number
+          delivery_fee: number
+          total: number
+          special_instructions: string | null
+          estimated_delivery_at: string | null
+          placed_at: string | null
+          confirmed_at: string | null
+          preparing_at: string | null
+          on_the_way_at: string | null
+          delivered_at: string | null
+          cancelled_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          restaurant_id: string
+          status?: string
+          items: Json
+          delivery_address: Json
+          subtotal: number
+          delivery_fee?: number
+          total: number
+          special_instructions?: string | null
+          estimated_delivery_at?: string | null
+          placed_at?: string | null
+          confirmed_at?: string | null
+          preparing_at?: string | null
+          on_the_way_at?: string | null
+          delivered_at?: string | null
+          cancelled_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          restaurant_id?: string
+          status?: string
+          items?: Json
+          delivery_address?: Json
+          subtotal?: number
+          delivery_fee?: number
+          total?: number
+          special_instructions?: string | null
+          estimated_delivery_at?: string | null
+          placed_at?: string | null
+          confirmed_at?: string | null
+          preparing_at?: string | null
+          on_the_way_at?: string | null
+          delivered_at?: string | null
+          cancelled_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_restaurant_id_fkey"
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
