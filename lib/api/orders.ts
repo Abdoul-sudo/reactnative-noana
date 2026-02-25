@@ -37,6 +37,15 @@ export type OrderWithRestaurant = Order & {
   };
 };
 
+export type OrderWithRestaurantDetail = Order & {
+  restaurants: {
+    name: string;
+    phone: string | null;
+    address: string | null;
+    cover_image_url: string | null;
+  };
+};
+
 /**
  * Create a new order. Status defaults to 'placed'.
  */
@@ -61,6 +70,21 @@ export async function fetchOrderById(orderId: string): Promise<Order> {
     .single();
   if (error) throw error;
   return data;
+}
+
+/**
+ * Fetch a single order with restaurant details (name, phone, address) for the tracking screen.
+ */
+export async function fetchOrderWithRestaurant(
+  orderId: string,
+): Promise<OrderWithRestaurantDetail> {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*, restaurants:restaurant_id(name, phone, address, cover_image_url)')
+    .eq('id', orderId)
+    .single();
+  if (error) throw error;
+  return data as OrderWithRestaurantDetail;
 }
 
 /**
