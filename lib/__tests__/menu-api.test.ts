@@ -216,3 +216,62 @@ describe('fetchTrendingDishes', () => {
     });
   });
 });
+
+// ── fetchMenuItemsByIds ──────────────────────────────────────────────────────
+
+import { fetchMenuItemsByIds, type MenuItem } from '@/lib/api/menu';
+
+const mockMenuItem: MenuItem = {
+  id: '11010000-0000-0000-0000-000000000001',
+  category_id: 'c1100000-0000-0000-0000-000000000001',
+  restaurant_id: RESTAURANT_ID,
+  name: 'Margherita',
+  description: 'Tomato, mozzarella, fresh basil',
+  price: 1200,
+  image_url: null,
+  dietary_tags: ['Vegan'],
+  prep_time_min: 15,
+  is_available: true,
+  deleted_at: null,
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+};
+
+describe('fetchMenuItemsByIds', () => {
+  /** Helper: builds the mock chain for fetchMenuItemsByIds
+   *  from → select → in → eq → is
+   */
+  function buildByIdsChain(resolvedValue: { data: MenuItem[] | null; error: any }) {
+    const mockIs = jest.fn().mockResolvedValue(resolvedValue);
+    const mockEq = jest.fn().mockReturnValue({ is: mockIs });
+    const mockIn = jest.fn().mockReturnValue({ eq: mockEq });
+    const mockSelect = jest.fn().mockReturnValue({ in: mockIn });
+    jest.spyOn(supabase, 'from').mockReturnValue({ select: mockSelect } as any);
+    return { mockSelect, mockIn, mockEq, mockIs };
+  }
+
+  it('returns available items matching the given IDs', async () => {
+    const { mockSelect, mockIn, mockEq, mockIs } = buildByIdsChain({
+      data: [mockMenuItem],
+      error: null,
+    });
+
+    const result = await fetchMenuItemsByIds([mockMenuItem.id]);
+
+    expect(supabase.from).toHaveBeenCalledWith('menu_items');
+    expect(mockSelect).toHaveBeenCalledWith('*');
+    expect(mockIn).toHaveBeenCalledWith('id', [mockMenuItem.id]);
+    expect(mockEq).toHaveBeenCalledWith('is_available', true);
+    expect(mockIs).toHaveBeenCalledWith('deleted_at', null);
+    expect(result).toEqual([mockMenuItem]);
+  });
+
+  it('returns empty array when given an empty IDs list (no DB call)', async () => {
+    const spy = jest.spyOn(supabase, 'from');
+
+    const result = await fetchMenuItemsByIds([]);
+
+    expect(spy).not.toHaveBeenCalled();
+    expect(result).toEqual([]);
+  });
+});

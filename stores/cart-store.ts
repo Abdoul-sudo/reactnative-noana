@@ -12,13 +12,20 @@ export type AddItemInput = Omit<CartItem, 'quantity'> & {
   restaurant_name?: string;
 };
 
+export type ReorderInput = {
+  items: (AddItemInput & { quantity: number })[];
+  restaurantName: string;
+};
+
 interface CartState {
   items: CartItem[];
   restaurantId: string | null;
   restaurantName: string | null;
   pendingItem: AddItemInput | null;
+  pendingReorder: ReorderInput | null;
   hasConflict: boolean;
   addItem: (item: AddItemInput) => void;
+  startReorder: (items: (AddItemInput & { quantity: number })[], restaurantId: string, restaurantName: string) => void;
   removeItem: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
@@ -33,6 +40,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   restaurantId: null,
   restaurantName: null,
   pendingItem: null,
+  pendingReorder: null,
   hasConflict: false,
 
   addItem: (item) => {
@@ -62,6 +70,32 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
   },
 
+  startReorder: (items, restaurantId, restaurantName) => {
+    const { restaurantId: currentRestId, items: currentItems } = get();
+
+    // No conflict: cart empty or same restaurant
+    if (!currentRestId || currentRestId === restaurantId || currentItems.length === 0) {
+      set({
+        items: items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          restaurant_id: item.restaurant_id,
+        })),
+        restaurantId,
+        restaurantName,
+      });
+      return;
+    }
+
+    // Conflict: different restaurant — trigger conflict dialog
+    set({
+      pendingReorder: { items, restaurantName },
+      hasConflict: true,
+    });
+  },
+
   removeItem: (itemId) => {
     const newItems = get().items.filter((i) => i.id !== itemId);
     const isEmpty = newItems.length === 0;
@@ -89,11 +123,33 @@ export const useCartStore = create<CartState>((set, get) => ({
     restaurantId: null,
     restaurantName: null,
     pendingItem: null,
+    pendingReorder: null,
     hasConflict: false,
   }),
 
   confirmConflict: () => {
-    const { pendingItem } = get();
+    const { pendingItem, pendingReorder } = get();
+
+    // Reorder confirmation — replace cart with all reorder items
+    if (pendingReorder) {
+      set({
+        items: pendingReorder.items.map((item) => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          restaurant_id: item.restaurant_id,
+        })),
+        restaurantId: pendingReorder.items[0]?.restaurant_id ?? null,
+        restaurantName: pendingReorder.restaurantName,
+        pendingReorder: null,
+        pendingItem: null,
+        hasConflict: false,
+      });
+      return;
+    }
+
+    // Single item conflict (existing behavior)
     if (!pendingItem) return;
     set({
       items: [{ ...pendingItem, quantity: 1 }],
@@ -105,7 +161,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   },
 
   cancelConflict: () => {
-    set({ pendingItem: null, hasConflict: false });
+    set({ pendingItem: null, pendingReorder: null, hasConflict: false });
   },
 
   getTotal: () =>

@@ -19,6 +19,7 @@ import { type Restaurant } from '@/lib/api/restaurants';
 import { type TrendingDish } from '@/lib/api/menu';
 import { useSurpriseMe } from '@/hooks/use-surprise-me';
 import { SurpriseMeCard } from '@/components/home/surprise-me-card';
+import { ReorderSection } from '@/components/home/reorder-section';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -137,6 +138,9 @@ export default function HomeScreen() {
           onTrigger={trigger}
           onReset={reset}
         />
+
+        {/* ── Order Again (reorder from previous orders) ──────── */}
+        <ReorderSection />
 
         {/* ── Featured restaurants ────────────────────────────── */}
         <View className="mt-4">

@@ -47,3 +47,23 @@ export async function fetchMenuByRestaurant(
   if (error) throw error;
   return (data ?? []) as MenuCategoryWithItems[];
 }
+
+/**
+ * Fetch menu items by their IDs, returning only items that are
+ * still available (is_available = true) and not soft-deleted.
+ * Used by reorder flow to check which items from a previous order
+ * can still be added to the cart.
+ */
+export async function fetchMenuItemsByIds(ids: string[]): Promise<MenuItem[]> {
+  if (ids.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('menu_items')
+    .select('*')
+    .in('id', ids)
+    .eq('is_available', true)
+    .is('deleted_at', null);
+
+  if (error) throw error;
+  return data ?? [];
+}
