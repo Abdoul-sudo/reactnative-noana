@@ -508,6 +508,25 @@ export type Database = {
           slug: string
         }[]
       }
+      order_stats: {
+        Args: {
+          p_restaurant_id: string
+        }
+        Returns: Json
+      }
+      revenue_chart: {
+        Args: {
+          p_restaurant_id: string
+          p_days?: number
+        }
+        Returns: Json
+      }
+      revenue_summary: {
+        Args: {
+          p_restaurant_id: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never
