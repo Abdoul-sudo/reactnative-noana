@@ -298,10 +298,14 @@ export type Database = {
           avatar_url: string | null
           created_at: string | null
           cuisine_preferences: Json | null
+          current_streak: number | null
           dietary_preferences: Json | null
           display_name: string | null
           email: string | null
           id: string
+          last_order_date: string | null
+          longest_streak: number | null
+          loyalty_points: number | null
           onboarding_completed: boolean | null
           push_token: string | null
           role: string
@@ -311,10 +315,14 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           cuisine_preferences?: Json | null
+          current_streak?: number | null
           dietary_preferences?: Json | null
           display_name?: string | null
           email?: string | null
           id: string
+          last_order_date?: string | null
+          longest_streak?: number | null
+          loyalty_points?: number | null
           onboarding_completed?: boolean | null
           push_token?: string | null
           role?: string
@@ -324,10 +332,14 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string | null
           cuisine_preferences?: Json | null
+          current_streak?: number | null
           dietary_preferences?: Json | null
           display_name?: string | null
           email?: string | null
           id?: string
+          last_order_date?: string | null
+          longest_streak?: number | null
+          loyalty_points?: number | null
           onboarding_completed?: boolean | null
           push_token?: string | null
           role?: string

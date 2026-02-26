@@ -20,9 +20,13 @@ import { type TrendingDish } from '@/lib/api/menu';
 import { useSurpriseMe } from '@/hooks/use-surprise-me';
 import { SurpriseMeCard } from '@/components/home/surprise-me-card';
 import { ReorderSection } from '@/components/home/reorder-section';
+import { useAuthStore } from '@/stores/auth-store';
+import { useRewards } from '@/hooks/use-rewards';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const session = useAuthStore((s) => s.session);
+  const { rewards } = useRewards(session?.user?.id ?? '');
   const { activeFilters, toggleFilter, clearFilters } = useDietaryFilters();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -88,9 +92,16 @@ export default function HomeScreen() {
             >
               <Bell size={24} color="#1f2937" />
             </Pressable>
-            <View className="bg-red-600 px-2 py-0.5 rounded-full">
-              <Text className="font-[Karla_600SemiBold] text-xs text-white">0 pts</Text>
-            </View>
+            <Pressable
+              onPress={() => router.push('/profile/rewards')}
+              accessibilityRole="button"
+              accessibilityLabel={`${rewards?.loyaltyPoints ?? 0} loyalty points, view rewards`}
+              className="bg-red-600 px-2 py-0.5 rounded-full"
+            >
+              <Text className="font-[Karla_600SemiBold] text-xs text-white">
+                {rewards?.loyaltyPoints ?? 0} pts
+              </Text>
+            </Pressable>
           </View>
         </View>
 

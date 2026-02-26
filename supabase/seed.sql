@@ -369,6 +369,19 @@ INSERT INTO public.reviews (id, restaurant_id, user_id, rating, comment, created
    'Outstanding lamb chops and the hummus is divine. Premium quality.', '2026-02-08T13:45:00Z');
 
 -- -----------------------------------------------------------------------------
--- 5. Growth: promotions, loyalty_transactions, operating_hours
+-- 5. Loyalty: set loyalty data for test customer
+-- -----------------------------------------------------------------------------
+-- Test customer has 1 delivered order (from La Bella Italia on 2026-02-18).
+-- The trigger won't retroactively fire for seed inserts, so set values manually.
+
+UPDATE public.profiles SET
+  loyalty_points = 10,
+  current_streak = 1,
+  longest_streak = 1,
+  last_order_date = '2026-02-18'
+WHERE id = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+
+-- -----------------------------------------------------------------------------
+-- 6. Growth: promotions, operating_hours
 -- -----------------------------------------------------------------------------
 -- (Added when growth tables are created in Epics 7-8)
