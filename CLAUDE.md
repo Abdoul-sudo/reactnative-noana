@@ -22,3 +22,7 @@ Je suis un développeur junior en apprentissage du développement full-stack. J'
 - Si je demande quelque chose de trop complexe, préviens moi si des alternatives plus simples existent
 - Considère chaque session de développement comme une opportunité d'apprendre/enseigner
 - Sois direct. Dis-moi quand je fais quelque chose de mal
+
+# BMAD method
+
+The project does not have sprint planning. Just refer to epic.md.

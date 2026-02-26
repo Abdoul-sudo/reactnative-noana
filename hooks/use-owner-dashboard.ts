@@ -4,15 +4,18 @@ import {
   fetchRevenueSummary,
   fetchRevenueChart,
   fetchOrderStats,
+  fetchTopDishes,
   type RevenueSummary,
   type RevenueChartPoint,
   type OrderStats,
+  type TopDish,
 } from '@/lib/api/owner-analytics';
 
 export function useOwnerDashboard(userId: string) {
   const [summary, setSummary] = useState<RevenueSummary | null>(null);
   const [chartData, setChartData] = useState<RevenueChartPoint[]>([]);
   const [orderStats, setOrderStats] = useState<OrderStats | null>(null);
+  const [topDishes, setTopDishes] = useState<TopDish[]>([]);
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -51,17 +54,19 @@ export function useOwnerDashboard(userId: string) {
 
         setRestaurantId(rid);
 
-        // Step 2: fetch all 3 analytics in parallel
-        const [summaryData, chartPoints, stats] = await Promise.all([
+        // Step 2: fetch all 4 analytics in parallel
+        const [summaryData, chartPoints, stats, dishes] = await Promise.all([
           fetchRevenueSummary(rid),
           fetchRevenueChart(rid),
           fetchOrderStats(rid),
+          fetchTopDishes(rid),
         ]);
 
         if (!cancelled) {
           setSummary(summaryData);
           setChartData(chartPoints);
           setOrderStats(stats);
+          setTopDishes(dishes);
         }
       } catch (e) {
         if (!cancelled) {
@@ -95,16 +100,18 @@ export function useOwnerDashboard(userId: string) {
 
       setRestaurantId(rid);
 
-      const [summaryData, chartPoints, stats] = await Promise.all([
+      const [summaryData, chartPoints, stats, dishes] = await Promise.all([
         fetchRevenueSummary(rid),
         fetchRevenueChart(rid),
         fetchOrderStats(rid),
+        fetchTopDishes(rid),
       ]);
 
       if (mountedRef.current) {
         setSummary(summaryData);
         setChartData(chartPoints);
         setOrderStats(stats);
+        setTopDishes(dishes);
       }
     } catch (e) {
       if (mountedRef.current) {
@@ -114,5 +121,5 @@ export function useOwnerDashboard(userId: string) {
     }
   }
 
-  return { summary, chartData, orderStats, restaurantId, isLoading, error, isEmpty, refetch };
+  return { summary, chartData, orderStats, topDishes, restaurantId, isLoading, error, isEmpty, refetch };
 }

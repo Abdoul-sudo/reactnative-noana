@@ -527,6 +527,13 @@ export type Database = {
         }
         Returns: Json
       }
+      top_dishes: {
+        Args: {
+          p_restaurant_id: string
+          p_limit?: number
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

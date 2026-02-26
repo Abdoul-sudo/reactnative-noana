@@ -1,4 +1,4 @@
-import { ScrollView, View, Text, Pressable, RefreshControl } from 'react-native';
+import { FlatList, ScrollView, View, Text, Pressable, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
@@ -9,7 +9,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { useOwnerDashboard } from '@/hooks/use-owner-dashboard';
 import { formatPrice } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
-import { type OrderStats } from '@/lib/api/owner-analytics';
+import { type OrderStats, type TopDish } from '@/lib/api/owner-analytics';
 
 const CHART_COLORS = {
   lineStroke: '#dc2626',
@@ -97,6 +97,20 @@ function DashboardSkeleton() {
         <Skeleton className="h-5 w-36 rounded bg-stone-800" />
         <Skeleton className="h-52 w-full rounded-xl bg-stone-800 mt-3" />
       </View>
+      <View className="px-4 mt-6">
+        <Skeleton className="h-5 w-28 rounded bg-stone-800" />
+        <View className="bg-stone-800 rounded-xl mt-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <View key={i} className="flex-row items-center px-4 py-3">
+              <Skeleton className="h-5 w-5 rounded bg-stone-700" />
+              <Skeleton className="h-4 w-32 rounded bg-stone-700 ml-2" />
+              <View className="flex-1" />
+              <Skeleton className="h-3 w-12 rounded bg-stone-700 mr-3" />
+              <Skeleton className="h-4 w-16 rounded bg-stone-700" />
+            </View>
+          ))}
+        </View>
+      </View>
     </SafeAreaView>
   );
 }
@@ -158,11 +172,45 @@ function DashboardErrorState({ message, onRetry }: { message: string; onRetry: (
   );
 }
 
+function DishSeparator() {
+  return <View className="h-px bg-stone-700 mx-4" />;
+}
+
+// ── Top dish leaderboard row ──────────────────────────────
+function TopDishRow({ dish, rank }: { dish: TopDish; rank: number }) {
+  const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
+
+  return (
+    <View
+      className="flex-row items-center px-4 py-3"
+      accessibilityLabel={`Rank ${rank}: ${dish.name}, ${dish.totalQuantity} sold, ${formatPrice(dish.totalRevenue)}`}
+      accessibilityRole="summary"
+    >
+      <View className="w-8 items-center">
+        {medal ? (
+          <Text className="text-base">{medal}</Text>
+        ) : (
+          <Text className="font-[Karla_600SemiBold] text-sm text-stone-500">{rank}</Text>
+        )}
+      </View>
+      <Text className="font-[Karla_600SemiBold] text-sm text-stone-100 flex-1 ml-2" numberOfLines={1}>
+        {dish.name}
+      </Text>
+      <Text className="font-[Karla_400Regular] text-xs text-stone-400 mr-3">
+        {dish.totalQuantity} sold
+      </Text>
+      <Text className="font-[Karla_700Bold] text-sm text-stone-100">
+        {formatPrice(dish.totalRevenue)}
+      </Text>
+    </View>
+  );
+}
+
 // ── Main dashboard screen ─────────────────────────────────
 export default function OwnerDashboardScreen() {
   const session = useAuthStore((s) => s.session);
   const userId = session?.user?.id ?? '';
-  const { summary, chartData, orderStats, isLoading, error, isEmpty, refetch } =
+  const { summary, chartData, orderStats, topDishes, isLoading, error, isEmpty, refetch } =
     useOwnerDashboard(userId);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -283,7 +331,7 @@ export default function OwnerDashboardScreen() {
         </View>
 
         {/* ── Orders donut chart ─────────────────────────── */}
-        <View className="px-4 mt-6 mb-6">
+        <View className="px-4 mt-6">
           <View className="flex-row items-baseline justify-between mb-3">
             <Text className="font-[Karla_700Bold] text-base text-stone-100">
               {timeframeLabel}
@@ -326,6 +374,32 @@ export default function OwnerDashboardScreen() {
               );
             })}
           </View>
+        </View>
+
+        {/* ── Top Dishes leaderboard ──────────────────────── */}
+        <View className="px-4 mt-6 mb-6">
+          <Text accessibilityRole="header" className="font-[Karla_700Bold] text-base text-stone-100 mb-3">
+            Top Dishes
+          </Text>
+          {topDishes.length > 0 ? (
+            <View className="bg-stone-800 rounded-xl overflow-hidden">
+              <FlatList
+                data={topDishes}
+                keyExtractor={(item) => item.menuItemId}
+                scrollEnabled={false}
+                renderItem={({ item, index }) => (
+                  <TopDishRow dish={item} rank={index + 1} />
+                )}
+                ItemSeparatorComponent={DishSeparator}
+              />
+            </View>
+          ) : (
+            <View className="bg-stone-800 rounded-xl py-8 items-center">
+              <Text className="font-[Karla_400Regular] text-sm text-stone-500">
+                No dish data yet
+              </Text>
+            </View>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>

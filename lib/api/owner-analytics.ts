@@ -25,6 +25,13 @@ export type OrderStats = {
   timeframe: 'today' | 'this_month';
 };
 
+export type TopDish = {
+  menuItemId: string;
+  name: string;
+  totalQuantity: number;
+  totalRevenue: number;
+};
+
 /** Fetches the first restaurant owned by this user, or null if none */
 export async function fetchOwnerRestaurantId(userId: string): Promise<string | null> {
   const { data, error } = await supabase
@@ -89,4 +96,26 @@ export async function fetchOrderStats(restaurantId: string): Promise<OrderStats>
     cancelled: data.cancelled ?? 0,
     timeframe: data.timeframe ?? 'today',
   };
+}
+
+/** Calls top_dishes RPC — returns top N dishes ranked by total quantity sold */
+export async function fetchTopDishes(
+  restaurantId: string,
+  limit: number = 10,
+): Promise<TopDish[]> {
+  const { data, error } = await supabase.rpc('top_dishes', {
+    p_restaurant_id: restaurantId,
+    p_limit: limit,
+  });
+
+  if (error) throw error;
+
+  return (data ?? []).map(
+    (d: { menu_item_id: string; name: string; total_quantity: number; total_revenue: number }) => ({
+      menuItemId: d.menu_item_id,
+      name: d.name,
+      totalQuantity: d.total_quantity,
+      totalRevenue: d.total_revenue,
+    }),
+  );
 }
