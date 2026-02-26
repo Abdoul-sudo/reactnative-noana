@@ -12,20 +12,31 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { type BottomSheetModal } from '@gorhom/bottom-sheet';
+import DraggableFlatList, {
+  type RenderItemParams,
+  ScaleDecorator,
+} from 'react-native-draggable-flatlist';
 import {
   AlertCircle,
+  Check,
   ChevronDown,
   ChevronRight,
+  GripVertical,
+  List,
   Pencil,
   Plus,
+  Square,
   Trash2,
   UtensilsCrossed,
+  X,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '@/stores/auth-store';
 import { useOwnerMenu } from '@/hooks/use-owner-menu';
 import { useOwnerMenuItems } from '@/hooks/use-owner-menu-items';
 import {
+  bulkToggleAvailability,
+  reorderMenuItems,
   softDeleteCategory,
   softDeleteMenuItem,
   toggleItemAvailability,
@@ -42,14 +53,20 @@ import { MenuItemFormSheet } from '@/components/owner/menu-item-form-sheet';
 // ── Menu item row ───────────────────────────────────────
 function MenuItemRow({
   item,
+  isBulkMode,
+  isSelected,
   onEdit,
   onDelete,
   onToggleAvailability,
+  onToggleSelect,
 }: {
   item: MenuItemDisplay;
+  isBulkMode: boolean;
+  isSelected: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onToggleAvailability: (value: boolean) => void;
+  onToggleSelect: () => void;
 }) {
   const imageUrl = getMenuImagePublicUrl(item.imageUrl);
   const tagLabels = (item.dietaryTags ?? [])
@@ -58,10 +75,33 @@ function MenuItemRow({
 
   return (
     <View
-      className="flex-row items-center px-4 py-3 bg-stone-800/50"
-      accessibilityLabel={`${item.name}, ${formatPrice(item.price)}${item.isAvailable ? '' : ', unavailable'}`}
+      className={`flex-row items-center px-4 py-3 ${isSelected ? 'bg-red-900/20' : 'bg-stone-800/50'}`}
+      accessibilityLabel={`${item.name}, ${formatPrice(item.price)}${item.isAvailable ? '' : ', unavailable'}${isSelected ? ', selected' : ''}`}
       accessibilityRole="summary"
     >
+      {/* Bulk select checkbox or drag handle area */}
+      {isBulkMode ? (
+        <Pressable
+          onPress={onToggleSelect}
+          accessibilityRole="checkbox"
+          accessibilityLabel={`Select ${item.name}`}
+          accessibilityState={{ checked: isSelected }}
+          className="p-1 mr-2"
+        >
+          {isSelected ? (
+            <View className="w-6 h-6 rounded bg-red-600 items-center justify-center">
+              <Check size={14} color="white" />
+            </View>
+          ) : (
+            <Square size={24} color="#a8a29e" />
+          )}
+        </Pressable>
+      ) : (
+        <View className="mr-2" accessible={false}>
+          <GripVertical size={18} color="#78716c" />
+        </View>
+      )}
+
       {/* Thumbnail */}
       {imageUrl ? (
         <Image
@@ -90,36 +130,36 @@ function MenuItemRow({
         </Text>
       </View>
 
-      {/* Availability toggle */}
-      <Switch
-        value={item.isAvailable}
-        onValueChange={onToggleAvailability}
-        trackColor={{ false: '#44403c', true: '#dc2626' }}
-        thumbColor="#fafaf9"
-        accessibilityLabel={`${item.name} availability`}
-        accessibilityRole="switch"
-        style={{ transform: [{ scale: 0.8 }] }}
-      />
-
-      {/* Edit */}
-      <Pressable
-        onPress={onEdit}
-        accessibilityRole="button"
-        accessibilityLabel={`Edit ${item.name}`}
-        className="p-2 ml-1"
-      >
-        <Pencil size={16} color="#a8a29e" />
-      </Pressable>
-
-      {/* Delete */}
-      <Pressable
-        onPress={onDelete}
-        accessibilityRole="button"
-        accessibilityLabel={`Delete ${item.name}`}
-        className="p-2"
-      >
-        <Trash2 size={16} color="#f87171" />
-      </Pressable>
+      {/* Actions — hidden in bulk mode */}
+      {!isBulkMode && (
+        <>
+          <Switch
+            value={item.isAvailable}
+            onValueChange={onToggleAvailability}
+            trackColor={{ false: '#44403c', true: '#dc2626' }}
+            thumbColor="#fafaf9"
+            accessibilityLabel={`${item.name} availability`}
+            accessibilityRole="switch"
+            style={{ transform: [{ scale: 0.8 }] }}
+          />
+          <Pressable
+            onPress={onEdit}
+            accessibilityRole="button"
+            accessibilityLabel={`Edit ${item.name}`}
+            className="p-2 ml-1"
+          >
+            <Pencil size={16} color="#a8a29e" />
+          </Pressable>
+          <Pressable
+            onPress={onDelete}
+            accessibilityRole="button"
+            accessibilityLabel={`Delete ${item.name}`}
+            className="p-2"
+          >
+            <Trash2 size={16} color="#f87171" />
+          </Pressable>
+        </>
+      )}
     </View>
   );
 }
@@ -143,6 +183,26 @@ function CategoryItemsSection({
   onItemChanged: () => void;
 }) {
   const { items, isLoading, error, refetch } = useOwnerMenuItems(categoryId, refreshTrigger);
+  const [isBulkMode, setIsBulkMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isSaving, setIsSaving] = useState(false);
+
+  function toggleSelect(itemId: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  }
+
+  function exitBulkMode() {
+    setIsBulkMode(false);
+    setSelectedIds(new Set());
+  }
 
   function handleDeleteItem(item: MenuItemDisplay) {
     Alert.alert(
@@ -179,6 +239,76 @@ function CategoryItemsSection({
     }
   }
 
+  async function handleDragEnd(data: MenuItemDisplay[]) {
+    if (isSaving) return;
+    const orderedIds = data.map((d) => d.id);
+    setIsSaving(true);
+    try {
+      await reorderMenuItems(categoryId, orderedIds);
+      refetch();
+    } catch (e) {
+      if (__DEV__) console.warn('[menu] reorder failed:', e);
+      Alert.alert('Error', 'Failed to save item order.');
+      refetch();
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleBulkToggle(isAvailable: boolean) {
+    const ids = [...selectedIds];
+    const label = isAvailable ? 'available' : 'unavailable';
+
+    Alert.alert(
+      `Mark ${label}`,
+      `Mark ${ids.length} item${ids.length === 1 ? '' : 's'} as ${label}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm',
+          onPress: async () => {
+            setIsSaving(true);
+            try {
+              await bulkToggleAvailability(ids, isAvailable);
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              refetch();
+              onItemChanged();
+              exitBulkMode();
+            } catch (e) {
+              if (__DEV__) console.warn('[menu] bulk toggle failed:', e);
+              Alert.alert('Error', 'Failed to update items.');
+            } finally {
+              setIsSaving(false);
+            }
+          },
+        },
+      ],
+    );
+  }
+
+  function renderDraggableItem({ item, drag, isActive }: RenderItemParams<MenuItemDisplay>) {
+    return (
+      <ScaleDecorator>
+        <Pressable
+          onLongPress={drag}
+          disabled={isActive || isSaving}
+          accessibilityLabel={`${item.name}, hold to drag`}
+          className={isActive ? 'opacity-90 bg-stone-700' : ''}
+        >
+          <MenuItemRow
+            item={item}
+            isBulkMode={false}
+            isSelected={false}
+            onEdit={() => onEditItem(item)}
+            onDelete={() => handleDeleteItem(item)}
+            onToggleAvailability={(val) => handleToggleAvailability(item, val)}
+            onToggleSelect={() => {}}
+          />
+        </Pressable>
+      </ScaleDecorator>
+    );
+  }
+
   if (isLoading) {
     return (
       <View className="px-4 py-3 bg-stone-800/30">
@@ -209,17 +339,106 @@ function CategoryItemsSection({
 
   return (
     <View>
-      {items.map((item, index) => (
-        <View key={item.id}>
-          {index > 0 && <ItemSeparator />}
-          <MenuItemRow
-            item={item}
-            onEdit={() => onEditItem(item)}
-            onDelete={() => handleDeleteItem(item)}
-            onToggleAvailability={(val) => handleToggleAvailability(item, val)}
-          />
+      {/* Bulk mode toolbar */}
+      <View className="flex-row items-center justify-between px-4 py-2 bg-stone-800/30">
+        {isBulkMode ? (
+          <>
+            <Text className="font-[Karla_500Medium] text-xs text-stone-300">
+              {selectedIds.size} selected
+            </Text>
+            <Pressable
+              onPress={exitBulkMode}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel selection"
+              className="p-1"
+            >
+              <X size={16} color="#a8a29e" />
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <Text className="font-[Karla_400Regular] text-xs text-stone-500">
+              Hold & drag to reorder
+            </Text>
+            <Pressable
+              onPress={() => setIsBulkMode(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Enter bulk selection mode"
+              className="flex-row items-center p-1"
+            >
+              <List size={14} color="#a8a29e" />
+              <Text className="font-[Karla_500Medium] text-xs text-stone-400 ml-1">Select</Text>
+            </Pressable>
+          </>
+        )}
+      </View>
+
+      {/* Item list */}
+      {isBulkMode ? (
+        // Bulk mode: simple list with checkboxes
+        items.map((item, index) => (
+          <View key={item.id}>
+            {index > 0 && <ItemSeparator />}
+            <Pressable onPress={() => toggleSelect(item.id)} accessible={false}>
+              <MenuItemRow
+                item={item}
+                isBulkMode
+                isSelected={selectedIds.has(item.id)}
+                onEdit={() => {}}
+                onDelete={() => {}}
+                onToggleAvailability={() => {}}
+                onToggleSelect={() => toggleSelect(item.id)}
+              />
+            </Pressable>
+          </View>
+        ))
+      ) : (
+        // Normal mode: draggable list
+        <DraggableFlatList
+          data={items}
+          keyExtractor={(item) => item.id}
+          onDragEnd={({ data }) => handleDragEnd(data)}
+          renderItem={renderDraggableItem}
+          ItemSeparatorComponent={ItemSeparator}
+          scrollEnabled={false}
+        />
+      )}
+
+      {/* Bulk action bar */}
+      {isBulkMode && selectedIds.size > 0 && (
+        <View className="flex-row items-center justify-center gap-3 px-4 py-3 bg-stone-800/60">
+          <Pressable
+            onPress={() => handleBulkToggle(false)}
+            disabled={isSaving}
+            accessibilityRole="button"
+            accessibilityLabel={`Mark ${selectedIds.size} items unavailable`}
+            className="flex-1 py-2.5 bg-stone-700 rounded-lg disabled:opacity-50"
+          >
+            {isSaving ? (
+              <ActivityIndicator size="small" color="#a8a29e" />
+            ) : (
+              <Text className="font-[Karla_600SemiBold] text-xs text-stone-300 text-center">
+                Mark Unavailable
+              </Text>
+            )}
+          </Pressable>
+          <Pressable
+            onPress={() => handleBulkToggle(true)}
+            disabled={isSaving}
+            accessibilityRole="button"
+            accessibilityLabel={`Mark ${selectedIds.size} items available`}
+            className="flex-1 py-2.5 bg-red-600 rounded-lg disabled:opacity-50"
+          >
+            {isSaving ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Text className="font-[Karla_600SemiBold] text-xs text-white text-center">
+                Mark Available
+              </Text>
+            )}
+          </Pressable>
         </View>
-      ))}
+      )}
     </View>
   );
 }

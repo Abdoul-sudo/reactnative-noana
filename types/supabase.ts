@@ -166,6 +166,7 @@ export type Database = {
           prep_time_min: number | null
           price: number
           restaurant_id: string
+          sort_order: number | null
           updated_at: string | null
         }
         Insert: {
@@ -181,6 +182,7 @@ export type Database = {
           prep_time_min?: number | null
           price: number
           restaurant_id: string
+          sort_order?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -196,6 +198,7 @@ export type Database = {
           prep_time_min?: number | null
           price?: number
           restaurant_id?: string
+          sort_order?: number | null
           updated_at?: string | null
         }
         Relationships: [

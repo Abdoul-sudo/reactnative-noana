@@ -120,16 +120,18 @@ export type MenuItemDisplay = {
   dietaryTags: DietaryTag[];
   prepTimeMin: number | null;
   isAvailable: boolean;
+  sortOrder: number;
   createdAt: string;
 };
 
-/** Fetches all active items for a category, ordered by created_at */
+/** Fetches all active items for a category, ordered by sort_order */
 export async function fetchMenuItems(categoryId: string): Promise<MenuItemDisplay[]> {
   const { data, error } = await supabase
     .from('menu_items')
-    .select('id, category_id, name, description, price, image_url, dietary_tags, prep_time_min, is_available, created_at')
+    .select('id, category_id, name, description, price, image_url, dietary_tags, prep_time_min, is_available, sort_order, created_at')
     .eq('category_id', categoryId)
     .is('deleted_at', null)
+    .order('sort_order')
     .order('created_at');
 
   if (error) throw error;
@@ -146,11 +148,12 @@ export async function fetchMenuItems(categoryId: string): Promise<MenuItemDispla
     ),
     prepTimeMin: item.prep_time_min,
     isAvailable: item.is_available ?? true,
+    sortOrder: item.sort_order ?? 0,
     createdAt: item.created_at ?? '',
   }));
 }
 
-/** Creates a new menu item */
+/** Creates a new menu item with sort_order at the end of the category */
 export async function createMenuItem(
   restaurantId: string,
   categoryId: string,
@@ -163,6 +166,18 @@ export async function createMenuItem(
     dietaryTags: DietaryTag[];
   },
 ): Promise<string> {
+  // Get next sort_order within this category
+  const { data: last } = await supabase
+    .from('menu_items')
+    .select('sort_order')
+    .eq('category_id', categoryId)
+    .is('deleted_at', null)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const nextOrder = (last?.sort_order ?? 0) + 1;
+
   const { data: row, error } = await supabase
     .from('menu_items')
     .insert({
@@ -174,6 +189,7 @@ export async function createMenuItem(
       prep_time_min: data.prepTimeMin ?? null,
       is_available: data.isAvailable,
       dietary_tags: data.dietaryTags,
+      sort_order: nextOrder,
     })
     .select('id')
     .single();
@@ -229,6 +245,39 @@ export async function toggleItemAvailability(itemId: string, isAvailable: boolea
     .from('menu_items')
     .update({ is_available: isAvailable })
     .eq('id', itemId)
+    .is('deleted_at', null);
+
+  if (error) throw error;
+}
+
+/** Persists a new sort order for items within a category */
+export async function reorderMenuItems(
+  categoryId: string,
+  orderedIds: string[],
+): Promise<void> {
+  for (let i = 0; i < orderedIds.length; i++) {
+    const { error } = await supabase
+      .from('menu_items')
+      .update({ sort_order: i })
+      .eq('id', orderedIds[i])
+      .eq('category_id', categoryId)
+      .is('deleted_at', null);
+
+    if (error) throw error;
+  }
+}
+
+/** Sets is_available on multiple items at once */
+export async function bulkToggleAvailability(
+  itemIds: string[],
+  isAvailable: boolean,
+): Promise<void> {
+  if (itemIds.length === 0) return;
+
+  const { error } = await supabase
+    .from('menu_items')
+    .update({ is_available: isAvailable })
+    .in('id', itemIds)
     .is('deleted_at', null);
 
   if (error) throw error;
