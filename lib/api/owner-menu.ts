@@ -1,5 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import { type Tables } from '@/types/supabase';
+import { DIETARY_TAGS, type DietaryTag } from '@/constants/dietary';
+
+const VALID_DIETARY_TAGS = new Set<string>(DIETARY_TAGS.map((t) => t.id));
 
 type MenuCategory = Tables<'menu_categories'>;
 
@@ -103,4 +106,130 @@ export async function softDeleteCategory(categoryId: string): Promise<void> {
     .is('deleted_at', null);
 
   if (catError) throw catError;
+}
+
+// ── Menu Items ──────────────────────────────────────────
+
+export type MenuItemDisplay = {
+  id: string;
+  categoryId: string;
+  name: string;
+  description: string | null;
+  price: number;
+  imageUrl: string | null;
+  dietaryTags: DietaryTag[];
+  prepTimeMin: number | null;
+  isAvailable: boolean;
+  createdAt: string;
+};
+
+/** Fetches all active items for a category, ordered by created_at */
+export async function fetchMenuItems(categoryId: string): Promise<MenuItemDisplay[]> {
+  const { data, error } = await supabase
+    .from('menu_items')
+    .select('id, category_id, name, description, price, image_url, dietary_tags, prep_time_min, is_available, created_at')
+    .eq('category_id', categoryId)
+    .is('deleted_at', null)
+    .order('created_at');
+
+  if (error) throw error;
+
+  return (data ?? []).map((item) => ({
+    id: item.id,
+    categoryId: item.category_id,
+    name: item.name,
+    description: item.description,
+    price: item.price,
+    imageUrl: item.image_url,
+    dietaryTags: ((item.dietary_tags ?? []) as string[]).filter(
+      (t): t is DietaryTag => VALID_DIETARY_TAGS.has(t),
+    ),
+    prepTimeMin: item.prep_time_min,
+    isAvailable: item.is_available ?? true,
+    createdAt: item.created_at ?? '',
+  }));
+}
+
+/** Creates a new menu item */
+export async function createMenuItem(
+  restaurantId: string,
+  categoryId: string,
+  data: {
+    name: string;
+    description?: string | null;
+    price: number;
+    prepTimeMin?: number | null;
+    isAvailable: boolean;
+    dietaryTags: DietaryTag[];
+  },
+): Promise<string> {
+  const { data: row, error } = await supabase
+    .from('menu_items')
+    .insert({
+      restaurant_id: restaurantId,
+      category_id: categoryId,
+      name: data.name,
+      description: data.description ?? null,
+      price: data.price,
+      prep_time_min: data.prepTimeMin ?? null,
+      is_available: data.isAvailable,
+      dietary_tags: data.dietaryTags,
+    })
+    .select('id')
+    .single();
+
+  if (error) throw error;
+  return row.id;
+}
+
+/** Updates an existing menu item's fields */
+export async function updateMenuItem(
+  itemId: string,
+  data: {
+    name: string;
+    description?: string | null;
+    price: number;
+    prepTimeMin?: number | null;
+    isAvailable: boolean;
+    dietaryTags: DietaryTag[];
+    imageUrl?: string | null;
+  },
+): Promise<void> {
+  const { error } = await supabase
+    .from('menu_items')
+    .update({
+      name: data.name,
+      description: data.description ?? null,
+      price: data.price,
+      prep_time_min: data.prepTimeMin ?? null,
+      is_available: data.isAvailable,
+      dietary_tags: data.dietaryTags,
+      image_url: data.imageUrl,
+    })
+    .eq('id', itemId)
+    .is('deleted_at', null);
+
+  if (error) throw error;
+}
+
+/** Soft-deletes a menu item */
+export async function softDeleteMenuItem(itemId: string): Promise<void> {
+  const { error } = await supabase
+    .from('menu_items')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', itemId)
+    .is('deleted_at', null);
+
+  if (error) throw error;
+}
+
+/** Toggles the is_available flag on a menu item */
+export async function toggleItemAvailability(itemId: string, isAvailable: boolean): Promise<void> {
+  const { error } = await supabase
+    .from('menu_items')
+    .update({ is_available: isAvailable })
+    .eq('id', itemId)
+    .is('deleted_at', null);
+
+  if (error) throw error;
 }
