@@ -53,11 +53,23 @@ function getStatusTimestampColumn(status: string): string {
   return map[status] ?? '';
 }
 
-function mapOwnerOrder(row: Order): OwnerOrder {
+export function mapOwnerOrder(row: Order): OwnerOrder {
   return {
     ...row,
     parsedItems: parseOrderItems(row.items),
   };
+}
+
+/** Type guard: validates essential fields for real-time payload narrowing. */
+export function isOrderRow(raw: unknown): raw is Order {
+  return (
+    raw != null &&
+    typeof raw === 'object' &&
+    'id' in raw &&
+    typeof raw.id === 'string' &&
+    'status' in raw &&
+    typeof raw.status === 'string'
+  );
 }
 
 // ── API Functions ───────────────────────────────────────

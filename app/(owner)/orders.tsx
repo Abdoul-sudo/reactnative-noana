@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { type BottomSheetModal } from '@gorhom/bottom-sheet';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { AlertCircle, ChefHat } from 'lucide-react-native';
 import { useAuthStore } from '@/stores/auth-store';
 import { useOwnerOrders } from '@/hooks/use-owner-orders';
@@ -223,6 +224,7 @@ export default function OwnerOrdersScreen() {
     refetch,
     activeStatus,
     setActiveStatus,
+    newOrderIds,
   } = useOwnerOrders(userId);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -305,7 +307,20 @@ export default function OwnerOrdersScreen() {
       <FlatList
         data={orders}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <OrderCard order={item} onPress={() => handleOpenDetail(item)} />}
+        renderItem={({ item }) => {
+          const isNew = newOrderIds.has(item.id);
+          const card = <OrderCard order={item} onPress={() => handleOpenDetail(item)} />;
+
+          if (isNew) {
+            return (
+              <Animated.View entering={FadeIn.duration(400)}>
+                {card}
+              </Animated.View>
+            );
+          }
+
+          return card;
+        }}
         ItemSeparatorComponent={CardSeparator}
         ListEmptyComponent={<EmptyState type="owner_orders" />}
         contentContainerStyle={orders.length === 0 ? { flexGrow: 1 } : { paddingTop: 4, paddingBottom: 24 }}
