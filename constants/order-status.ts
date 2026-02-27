@@ -22,3 +22,12 @@ export const ORDER_STEPS = [
 ] as const;
 
 export type OrderStep = (typeof ORDER_STEPS)[number];
+
+/** Status → hex color mapping shared across owner screens. */
+export const STATUS_COLORS: Record<string, string> = {
+  placed: '#60a5fa',
+  confirmed: '#facc15',
+  preparing: '#fb923c',
+  on_the_way: '#a78bfa',
+  delivered: '#4ade80',
+};

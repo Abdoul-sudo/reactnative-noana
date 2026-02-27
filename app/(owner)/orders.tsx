@@ -9,27 +9,28 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
+import { type BottomSheetModal } from '@gorhom/bottom-sheet';
 import { AlertCircle, ChefHat } from 'lucide-react-native';
 import { useAuthStore } from '@/stores/auth-store';
 import { useOwnerOrders } from '@/hooks/use-owner-orders';
-import { ORDER_STATUS, type OrderStatus } from '@/constants/order-status';
+import { ORDER_STATUS, STATUS_COLORS, type OrderStatus } from '@/constants/order-status';
 import { type OwnerOrder } from '@/lib/api/owner-orders';
 import { formatPrice, formatTimeSince } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
+import { OrderDetailsSheet } from '@/components/owner/order-details-sheet';
 
 // ── Status Tab Config ────────────────────────────────────
 
 const STATUS_TABS: ReadonlyArray<{
   status: OrderStatus;
   label: string;
-  color: string;
 }> = [
-  { status: ORDER_STATUS.PLACED, label: 'New', color: '#60a5fa' },
-  { status: ORDER_STATUS.CONFIRMED, label: 'Confirmed', color: '#facc15' },
-  { status: ORDER_STATUS.PREPARING, label: 'Preparing', color: '#fb923c' },
-  { status: ORDER_STATUS.ON_THE_WAY, label: 'Ready', color: '#a78bfa' },
-  { status: ORDER_STATUS.DELIVERED, label: 'Completed', color: '#4ade80' },
+  { status: ORDER_STATUS.PLACED, label: 'New' },
+  { status: ORDER_STATUS.CONFIRMED, label: 'Confirmed' },
+  { status: ORDER_STATUS.PREPARING, label: 'Preparing' },
+  { status: ORDER_STATUS.ON_THE_WAY, label: 'Ready' },
+  { status: ORDER_STATUS.DELIVERED, label: 'Completed' },
 ] as const;
 
 // ── Items Summary Helper ─────────────────────────────────
@@ -77,7 +78,7 @@ function StatusTabBar({
             accessibilityState={{ selected: isActive }}
             accessibilityLabel={`${tab.label} tab, ${count} orders`}
             className="flex-row items-center rounded-full px-4 py-2"
-            style={{ backgroundColor: isActive ? tab.color : '#292524' }}
+            style={{ backgroundColor: isActive ? STATUS_COLORS[tab.status] ?? '#a8a29e' : '#292524' }}
           >
             <Text
               className="font-[Karla_600SemiBold] text-xs"
@@ -107,15 +108,15 @@ function StatusTabBar({
 
 // ── Order Card ───────────────────────────────────────────
 
-function OrderCard({ order }: { order: OwnerOrder }) {
-  const activeTab = STATUS_TABS.find((t) => t.status === order.status);
-  const dotColor = activeTab?.color ?? '#a8a29e';
+function OrderCard({ order, onPress }: { order: OwnerOrder; onPress: () => void }) {
+  const dotColor = STATUS_COLORS[order.status] ?? '#a8a29e';
 
   return (
-    <View
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`View order ${order.id.slice(0, 8)}, ${formatItemsSummary(order)}, ${formatPrice(order.total)}`}
       className="bg-stone-800 rounded-xl p-4 mx-4"
-      accessibilityRole="summary"
-      accessibilityLabel={`Order ${order.id.slice(0, 8)}, ${formatItemsSummary(order)}, ${formatPrice(order.total)}`}
     >
       {/* Top row: order # + time */}
       <View className="flex-row items-center justify-between mb-2">
@@ -146,7 +147,7 @@ function OrderCard({ order }: { order: OwnerOrder }) {
       <Text className="font-[Karla_600SemiBold] text-sm text-stone-200">
         {formatPrice(order.total)}
       </Text>
-    </View>
+    </Pressable>
   );
 }
 
@@ -224,6 +225,17 @@ export default function OwnerOrdersScreen() {
     setActiveStatus,
   } = useOwnerOrders(userId);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const sheetRef = useRef<BottomSheetModal>(null);
+
+  function handleOpenDetail(order: OwnerOrder) {
+    setSelectedOrderId(order.id);
+    sheetRef.current?.present();
+  }
+
+  function handleStatusUpdated() {
+    refetch();
+  }
 
   // Refetch on tab focus (skip first mount)
   const isFirstFocusRef = useRef(true);
@@ -293,7 +305,7 @@ export default function OwnerOrdersScreen() {
       <FlatList
         data={orders}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <OrderCard order={item} />}
+        renderItem={({ item }) => <OrderCard order={item} onPress={() => handleOpenDetail(item)} />}
         ItemSeparatorComponent={CardSeparator}
         ListEmptyComponent={<EmptyState type="owner_orders" />}
         contentContainerStyle={orders.length === 0 ? { flexGrow: 1 } : { paddingTop: 4, paddingBottom: 24 }}
@@ -304,6 +316,13 @@ export default function OwnerOrdersScreen() {
             tintColor="#dc2626"
           />
         }
+      />
+
+      {/* Order Details Bottom Sheet */}
+      <OrderDetailsSheet
+        ref={sheetRef}
+        orderId={selectedOrderId}
+        onStatusUpdated={handleStatusUpdated}
       />
     </SafeAreaView>
   );
