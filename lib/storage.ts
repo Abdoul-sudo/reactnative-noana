@@ -116,3 +116,56 @@ export function getMenuImagePublicUrl(storagePath: string | null): string | unde
 
   return data.publicUrl;
 }
+
+// ── Restaurant Images (public bucket) ────────────────────
+
+/**
+ * Upload a restaurant image (cover or logo) to the public `restaurant-images` bucket.
+ * Path: {restaurantId}/{type}/{timestamp}.{ext}
+ *
+ * @returns The storage path (use `getRestaurantImagePublicUrl` to get the full URL).
+ */
+export async function uploadRestaurantImage(
+  restaurantId: string,
+  type: 'cover' | 'logo',
+  imageUri: string,
+): Promise<string> {
+  const base64 = await FileSystem.readAsStringAsync(imageUri, {
+    encoding: FileSystem.EncodingType.Base64,
+  });
+
+  const ext = extractExt(imageUri);
+  const path = `${restaurantId}/${type}/${Date.now()}.${ext}`;
+  const contentType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+
+  const { error } = await supabase.storage
+    .from('restaurant-images')
+    .upload(path, decode(base64), { contentType, upsert: true });
+
+  if (error) throw error;
+  return path;
+}
+
+/** Delete a restaurant image from the public `restaurant-images` bucket. */
+export async function deleteRestaurantImage(storagePath: string): Promise<void> {
+  if (!storagePath) return;
+
+  const { error } = await supabase.storage
+    .from('restaurant-images')
+    .remove([storagePath]);
+
+  if (error) {
+    if (__DEV__) console.warn('[storage] deleteRestaurantImage failed:', error);
+  }
+}
+
+/** Get the public URL for a restaurant image path. Returns undefined if no path. */
+export function getRestaurantImagePublicUrl(storagePath: string | null): string | undefined {
+  if (!storagePath) return undefined;
+
+  const { data } = supabase.storage
+    .from('restaurant-images')
+    .getPublicUrl(storagePath);
+
+  return data.publicUrl;
+}

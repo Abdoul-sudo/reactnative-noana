@@ -358,11 +358,13 @@ export type Database = {
           cuisine_type: string | null
           deleted_at: string | null
           delivery_fee: number | null
+          delivery_radius_km: number | null
           delivery_time_min: number | null
           description: string | null
           dietary_options: Json | null
           id: string
           is_open: boolean | null
+          operating_hours: Json | null
           latitude: number
           logo_url: string | null
           longitude: number
@@ -383,11 +385,13 @@ export type Database = {
           cuisine_type?: string | null
           deleted_at?: string | null
           delivery_fee?: number | null
+          delivery_radius_km?: number | null
           delivery_time_min?: number | null
           description?: string | null
           dietary_options?: Json | null
           id?: string
           is_open?: boolean | null
+          operating_hours?: Json | null
           latitude: number
           logo_url?: string | null
           longitude: number
@@ -408,11 +412,13 @@ export type Database = {
           cuisine_type?: string | null
           deleted_at?: string | null
           delivery_fee?: number | null
+          delivery_radius_km?: number | null
           delivery_time_min?: number | null
           description?: string | null
           dietary_options?: Json | null
           id?: string
           is_open?: boolean | null
+          operating_hours?: Json | null
           latitude?: number
           logo_url?: string | null
           longitude?: number
