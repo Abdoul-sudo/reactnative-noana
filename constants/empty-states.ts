@@ -19,7 +19,8 @@ export type EmptyStateType =
   | 'restaurant_menu_empty'        // Epic 4: restaurant has no menu items
   | 'restaurant_reviews_empty'     // Epic 4: restaurant has no reviews
   | 'addresses'                    // Epic 5: no saved delivery addresses
-  | 'promotions';                  // Epic 7: no active promotions
+  | 'promotions'                   // Epic 7: no active promotions
+  | 'owner_reviews_empty';         // Epic 9: owner has no reviews yet
 
 export interface EmptyStateConfig {
   title: string;
@@ -143,5 +144,10 @@ export const EMPTY_STATES: Record<EmptyStateType, EmptyStateConfig> = {
     message: 'Create a promotion to attract more customers.',
     iconName: 'Tag',
     ctaLabel: 'Create promotion',
+  },
+  owner_reviews_empty: {
+    title: 'Your first review is on its way!',
+    message: 'Reviews will appear here once customers share their feedback.',
+    iconName: 'MessageSquare',
   },
 };

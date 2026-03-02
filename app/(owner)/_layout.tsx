@@ -55,6 +55,12 @@ export default function OwnerLayout() {
           tabBarIcon: ({ color }) => <Settings size={24} color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="reviews"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
