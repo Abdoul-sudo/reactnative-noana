@@ -9,6 +9,7 @@ import { useCartStore } from '@/stores/cart-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { useAddresses } from '@/hooks/use-addresses';
 import { createOrder } from '@/lib/api/orders';
+import { supabase } from '@/lib/supabase';
 import { type Address } from '@/lib/api/addresses';
 import { AddressSelector } from '@/components/address/address-selector';
 import { AddressFormSheet } from '@/components/address/address-form-sheet';
@@ -96,6 +97,13 @@ export default function CheckoutScreen() {
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
       const order = await createOrder(payload);
+
+      // Notify restaurant owner (fire-and-forget — failure doesn't block checkout)
+      supabase.functions.invoke('notify-new-order', {
+        body: { orderId: order.id },
+      }).catch(() => {
+        // Silent failure — owner will still see order via real-time (Story 8.3)
+      });
 
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       clearCart();

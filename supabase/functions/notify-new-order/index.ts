@@ -1,13 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { sendPush } from '../_shared/push.ts';
 
-const STATUS_LABELS: Record<string, string> = {
-  confirmed: 'Your order has been confirmed!',
-  preparing: 'Your order is being prepared!',
-  on_the_way: 'Your order is on the way!',
-  delivered: 'Your order has been delivered!',
-};
-
 Deno.serve(async (req) => {
   try {
     const { orderId } = await req.json();
@@ -40,16 +33,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create Supabase client with service_role key (server-side)
+    // Service role client for DB queries (bypasses RLS)
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Fetch order with restaurant name
+    // Fetch order
     const { data: order, error: orderError } = await supabase
       .from('orders')
-      .select('id, status, user_id, restaurant_id, restaurants:restaurant_id(name)')
+      .select('id, user_id, restaurant_id, items, total')
       .eq('id', orderId)
       .single();
 
@@ -60,25 +53,33 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Verify caller is the restaurant owner
-    const { data: restaurant } = await supabase
-      .from('restaurants')
-      .select('owner_id')
-      .eq('id', order.restaurant_id)
-      .single();
-
-    if (!restaurant || restaurant.owner_id !== callerId) {
+    // Verify caller is the order creator
+    if (order.user_id !== callerId) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { 'Content-Type': 'application/json' } },
       );
     }
 
-    // Get customer's push token
+    // Fetch restaurant to get owner_id
+    const { data: restaurant } = await supabase
+      .from('restaurants')
+      .select('owner_id')
+      .eq('id', order.restaurant_id)
+      .single();
+
+    if (!restaurant) {
+      return new Response(
+        JSON.stringify({ error: 'Restaurant not found' }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // Fetch owner's push token
     const { data: profile } = await supabase
       .from('profiles')
       .select('push_token')
-      .eq('id', order.user_id)
+      .eq('id', restaurant.owner_id)
       .single();
 
     if (!profile?.push_token) {
@@ -88,21 +89,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Build and send notification
-    const restaurants = order.restaurants;
-    const restaurantName =
-      restaurants != null &&
-      typeof restaurants === 'object' &&
-      'name' in restaurants &&
-      typeof restaurants.name === 'string'
-        ? restaurants.name
-        : 'Restaurant';
-    const title = restaurantName;
-    const body = STATUS_LABELS[order.status] ?? `Order status: ${order.status}`;
+    // Build notification with order summary
+    const itemCount = Array.isArray(order.items) ? order.items.length : 0;
+    const title = 'New Order!';
+    const body = `${itemCount} item${itemCount !== 1 ? 's' : ''} — ${order.total} DA`;
 
     await sendPush(profile.push_token, title, body, {
       orderId: order.id,
-      status: order.status,
+      type: 'new_order',
     });
 
     return new Response(
