@@ -12,7 +12,7 @@ jest.mock('react-native', () => ({
 }));
 
 import { supabase } from '@/lib/supabase';
-import { fetchOwnerReviews, fetchRatingTrend } from '@/lib/api/owner-reviews';
+import { fetchOwnerReviews, fetchRatingTrend, replyToReview } from '@/lib/api/owner-reviews';
 import type { ReviewWithProfile } from '@/lib/api/reviews';
 
 beforeEach(() => {
@@ -46,7 +46,7 @@ const mockReview3Star: ReviewWithProfile = {
 // ── fetchOwnerReviews ─────────────────────────────────────────────────────────
 
 describe('fetchOwnerReviews', () => {
-  it('returns all reviews when no filter applied', async () => {
+  it('returns all reviews for a restaurant', async () => {
     const mockOrder = jest.fn().mockResolvedValue({ data: [mockReview, mockReview3Star], error: null });
     const mockEq = jest.fn().mockReturnValue({ order: mockOrder });
     const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
@@ -59,33 +59,6 @@ describe('fetchOwnerReviews', () => {
     expect(mockEq).toHaveBeenCalledWith('restaurant_id', 'a1000000-0000-0000-0000-000000000001');
     expect(mockOrder).toHaveBeenCalledWith('created_at', { ascending: false });
     expect(result).toHaveLength(2);
-  });
-
-  it('applies rating filter when provided', async () => {
-    const mockOrder = jest.fn().mockResolvedValue({ data: [mockReview], error: null });
-    const mockEqRating = jest.fn().mockReturnValue({ order: mockOrder });
-    const mockEqRestaurant = jest.fn().mockReturnValue({ eq: mockEqRating });
-    const mockSelect = jest.fn().mockReturnValue({ eq: mockEqRestaurant });
-    jest.spyOn(supabase, 'from').mockReturnValue({ select: mockSelect } as any);
-
-    const result = await fetchOwnerReviews('a1000000-0000-0000-0000-000000000001', 5);
-
-    expect(mockEqRestaurant).toHaveBeenCalledWith('restaurant_id', 'a1000000-0000-0000-0000-000000000001');
-    expect(mockEqRating).toHaveBeenCalledWith('rating', 5);
-    expect(result).toEqual([mockReview]);
-  });
-
-  it('does not apply filter when ratingFilter is 0', async () => {
-    const mockOrder = jest.fn().mockResolvedValue({ data: [mockReview], error: null });
-    const mockEq = jest.fn().mockReturnValue({ order: mockOrder });
-    const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
-    jest.spyOn(supabase, 'from').mockReturnValue({ select: mockSelect } as any);
-
-    await fetchOwnerReviews('a1000000-0000-0000-0000-000000000001', 0);
-
-    // eq should only be called once (for restaurant_id), not twice
-    expect(mockEq).toHaveBeenCalledTimes(1);
-    expect(mockEq).toHaveBeenCalledWith('restaurant_id', 'a1000000-0000-0000-0000-000000000001');
   });
 
   it('returns empty array when no reviews exist', async () => {
@@ -150,6 +123,51 @@ describe('fetchRatingTrend', () => {
       fetchRatingTrend('a1000000-0000-0000-0000-000000000001'),
     ).rejects.toMatchObject({
       message: 'Unauthorized: not restaurant owner',
+    });
+  });
+});
+
+// ── replyToReview ───────────────────────────────────────────────────────────
+
+describe('replyToReview', () => {
+  it('updates owner_reply and returns updated review with profile', async () => {
+    const updatedReview = {
+      ...mockReview,
+      owner_reply: 'Thank you for your feedback!',
+      owner_reply_at: '2026-03-04T10:00:00Z',
+    };
+
+    const mockSingle = jest.fn().mockResolvedValue({ data: updatedReview, error: null });
+    const mockSelect = jest.fn().mockReturnValue({ single: mockSingle });
+    const mockEq = jest.fn().mockReturnValue({ select: mockSelect });
+    const mockUpdate = jest.fn().mockReturnValue({ eq: mockEq });
+    jest.spyOn(supabase, 'from').mockReturnValue({ update: mockUpdate } as any);
+
+    const result = await replyToReview('r1000000-0000-0000-0000-000000000001', 'Thank you for your feedback!');
+
+    expect(supabase.from).toHaveBeenCalledWith('reviews');
+    expect(mockUpdate).toHaveBeenCalledWith({
+      owner_reply: 'Thank you for your feedback!',
+    });
+    expect(mockEq).toHaveBeenCalledWith('id', 'r1000000-0000-0000-0000-000000000001');
+    expect(mockSelect).toHaveBeenCalledWith('*, profiles:user_id(display_name, avatar_url)');
+    expect(result.owner_reply).toBe('Thank you for your feedback!');
+  });
+
+  it('throws on database error', async () => {
+    const mockSingle = jest.fn().mockResolvedValue({
+      data: null,
+      error: { message: 'RLS policy violation' },
+    });
+    const mockSelect = jest.fn().mockReturnValue({ single: mockSingle });
+    const mockEq = jest.fn().mockReturnValue({ select: mockSelect });
+    const mockUpdate = jest.fn().mockReturnValue({ eq: mockEq });
+    jest.spyOn(supabase, 'from').mockReturnValue({ update: mockUpdate } as any);
+
+    await expect(
+      replyToReview('r1000000-0000-0000-0000-000000000001', 'Test reply'),
+    ).rejects.toMatchObject({
+      message: 'RLS policy violation',
     });
   });
 });

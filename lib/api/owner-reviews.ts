@@ -6,21 +6,15 @@ export type RatingTrend = {
   previous_avg: number;
 };
 
-/** Fetches reviews for a restaurant, optionally filtered by star rating */
+/** Fetches all reviews for a restaurant (filtering is done client-side) */
 export async function fetchOwnerReviews(
   restaurantId: string,
-  ratingFilter?: number,
 ): Promise<ReviewWithProfile[]> {
-  let query = supabase
+  const { data, error } = await supabase
     .from('reviews')
     .select('*, profiles:user_id(display_name, avatar_url)')
-    .eq('restaurant_id', restaurantId);
-
-  if (ratingFilter && ratingFilter > 0) {
-    query = query.eq('rating', ratingFilter);
-  }
-
-  const { data, error } = await query.order('created_at', { ascending: false });
+    .eq('restaurant_id', restaurantId)
+    .order('created_at', { ascending: false });
   if (error) throw error;
   return (data ?? []) as ReviewWithProfile[];
 }
@@ -32,4 +26,20 @@ export async function fetchRatingTrend(restaurantId: string): Promise<RatingTren
   });
   if (error) throw error;
   return data as RatingTrend;
+}
+
+/** Updates owner reply on a review */
+export async function replyToReview(
+  reviewId: string,
+  reply: string,
+): Promise<ReviewWithProfile> {
+  const { data, error } = await supabase
+    .from('reviews')
+    .update({ owner_reply: reply })
+    .eq('id', reviewId)
+    .select('*, profiles:user_id(display_name, avatar_url)')
+    .single();
+
+  if (error) throw error;
+  return data as ReviewWithProfile;
 }

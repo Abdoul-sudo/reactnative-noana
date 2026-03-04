@@ -12,12 +12,14 @@ import { useFocusEffect, router } from 'expo-router';
 import {
   AlertCircle,
   ArrowLeft,
+  MessageSquare,
   Minus,
   Star,
   TrendingDown,
   TrendingUp,
 } from 'lucide-react-native';
 import { Image } from 'expo-image';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import { useAuthStore } from '@/stores/auth-store';
 import { useOwnerReviews } from '@/hooks/use-owner-reviews';
 import { fetchOwnerRestaurantId } from '@/lib/api/owner-analytics';
@@ -25,6 +27,7 @@ import type { RatingTrend } from '@/lib/api/owner-reviews';
 import type { ReviewWithProfile } from '@/lib/api/reviews';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
+import { ReplySheet } from '@/components/owner/reply-sheet';
 
 // ── Rating Filter Config ────────────────────────────────
 
@@ -183,7 +186,13 @@ function RatingFilterBar({
 
 // ── Review Card ─────────────────────────────────────────
 
-function ReviewCard({ review }: { review: ReviewWithProfile }) {
+function ReviewCard({
+  review,
+  onReply,
+}: {
+  review: ReviewWithProfile;
+  onReply: (reviewId: string, existingReply: string | null) => void;
+}) {
   const displayName =
     review.profiles != null &&
     typeof review.profiles === 'object' &&
@@ -199,6 +208,12 @@ function ReviewCard({ review }: { review: ReviewWithProfile }) {
     typeof review.profiles.avatar_url === 'string'
       ? review.profiles.avatar_url
       : null;
+
+  const ownerReply =
+    typeof review.owner_reply === 'string' ? review.owner_reply : null;
+
+  const ownerReplyAt =
+    typeof review.owner_reply_at === 'string' ? review.owner_reply_at : null;
 
   return (
     <View className="bg-stone-800 rounded-xl p-4 mx-4">
@@ -248,6 +263,38 @@ function ReviewCard({ review }: { review: ReviewWithProfile }) {
               {review.comment}
             </Text>
           )}
+
+          {/* Owner reply */}
+          {ownerReply && (
+            <View className="mt-3 bg-stone-700/50 rounded-lg p-3">
+              <View className="flex-row items-center justify-between mb-1">
+                <Text className="font-[Karla_600SemiBold] text-xs text-stone-400">
+                  Owner reply
+                </Text>
+                {ownerReplyAt && (
+                  <Text className="font-[Karla_400Regular] text-xs text-stone-500">
+                    {getRelativeDate(ownerReplyAt)}
+                  </Text>
+                )}
+              </View>
+              <Text className="font-[Karla_400Regular] text-sm text-stone-300">
+                {ownerReply}
+              </Text>
+            </View>
+          )}
+
+          {/* Reply / Edit reply button */}
+          <Pressable
+            onPress={() => onReply(review.id, ownerReply)}
+            accessibilityRole="button"
+            accessibilityLabel={ownerReply ? 'Edit reply' : 'Reply to review'}
+            className="flex-row items-center mt-2"
+          >
+            <MessageSquare size={14} color="#ca8a04" />
+            <Text className="font-[Karla_600SemiBold] text-xs ml-1" style={{ color: '#ca8a04' }}>
+              {ownerReply ? 'Edit reply' : 'Reply'}
+            </Text>
+          </Pressable>
         </View>
       </View>
     </View>
@@ -333,6 +380,23 @@ export default function OwnerReviewsScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [initLoading, setInitLoading] = useState(true);
   const [initError, setInitError] = useState<Error | null>(null);
+
+  // Reply sheet state
+  const replySheetRef = useRef<BottomSheetModal>(null);
+  const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
+  const [selectedExistingReply, setSelectedExistingReply] = useState<string | null>(null);
+  const [replyNonce, setReplyNonce] = useState(0);
+
+  function handleOpenReply(reviewId: string, existingReply: string | null) {
+    setSelectedReviewId(reviewId);
+    setSelectedExistingReply(existingReply);
+    setReplyNonce((n) => n + 1);
+    replySheetRef.current?.present();
+  }
+
+  function handleReplySuccess() {
+    refetch();
+  }
 
   // Resolve restaurantId from userId (same pattern as use-owner-orders)
   useEffect(() => {
@@ -478,7 +542,7 @@ export default function OwnerReviewsScreen() {
       <FlatList
         data={reviews}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <ReviewCard review={item} />}
+        renderItem={({ item }) => <ReviewCard review={item} onReply={handleOpenReply} />}
         ItemSeparatorComponent={CardSeparator}
         ListEmptyComponent={<EmptyState type="owner_reviews_empty" />}
         contentContainerStyle={
@@ -493,6 +557,15 @@ export default function OwnerReviewsScreen() {
             tintColor="#dc2626"
           />
         }
+      />
+
+      {/* Reply Bottom Sheet */}
+      <ReplySheet
+        ref={replySheetRef}
+        reviewId={selectedReviewId}
+        existingReply={selectedExistingReply}
+        nonce={replyNonce}
+        onSuccess={handleReplySuccess}
       />
     </SafeAreaView>
   );
