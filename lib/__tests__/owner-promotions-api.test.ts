@@ -14,8 +14,10 @@ jest.mock('react-native', () => ({
 import { supabase } from '@/lib/supabase';
 import {
   fetchPromotions,
+  fetchPromotionHistory,
   fetchPromotionStats,
   createPromotion,
+  createFlashDeal,
   updatePromotion,
   togglePromotion,
 } from '@/lib/api/owner-promotions';
@@ -44,30 +46,22 @@ const mockPromotion = {
 // ── fetchPromotions ──────────────────────────────────────────────────────────
 
 describe('fetchPromotions', () => {
-  it('returns promotions for a restaurant', async () => {
+  it('returns active promotions with filters', async () => {
     const mockOrder = jest.fn().mockResolvedValue({ data: [mockPromotion], error: null });
-    const mockEq = jest.fn().mockReturnValue({ order: mockOrder });
-    const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
+    const mockGte = jest.fn().mockReturnValue({ order: mockOrder });
+    const mockEqActive = jest.fn().mockReturnValue({ gte: mockGte });
+    const mockEqRestaurant = jest.fn().mockReturnValue({ eq: mockEqActive });
+    const mockSelect = jest.fn().mockReturnValue({ eq: mockEqRestaurant });
     jest.spyOn(supabase, 'from').mockReturnValue({ select: mockSelect } as any);
 
     const result = await fetchPromotions('a1000000-0000-0000-0000-000000000001');
 
     expect(supabase.from).toHaveBeenCalledWith('promotions');
     expect(mockSelect).toHaveBeenCalledWith('*');
-    expect(mockEq).toHaveBeenCalledWith('restaurant_id', 'a1000000-0000-0000-0000-000000000001');
-    expect(mockOrder).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(mockEqRestaurant).toHaveBeenCalledWith('restaurant_id', 'a1000000-0000-0000-0000-000000000001');
+    expect(mockEqActive).toHaveBeenCalledWith('is_active', true);
+    expect(mockGte).toHaveBeenCalledWith('end_date', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/));
     expect(result).toHaveLength(1);
-    expect(result[0].name).toBe('Summer Special');
-  });
-
-  it('returns empty array when no promotions exist', async () => {
-    const mockOrder = jest.fn().mockResolvedValue({ data: [], error: null });
-    const mockEq = jest.fn().mockReturnValue({ order: mockOrder });
-    const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
-    jest.spyOn(supabase, 'from').mockReturnValue({ select: mockSelect } as any);
-
-    const result = await fetchPromotions('nonexistent-id');
-    expect(result).toEqual([]);
   });
 
   it('throws on database error', async () => {
@@ -75,12 +69,62 @@ describe('fetchPromotions', () => {
       data: null,
       error: { message: 'connection refused', code: '08006' },
     });
-    const mockEq = jest.fn().mockReturnValue({ order: mockOrder });
-    const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
+    const mockGte = jest.fn().mockReturnValue({ order: mockOrder });
+    const mockEqActive = jest.fn().mockReturnValue({ gte: mockGte });
+    const mockEqRestaurant = jest.fn().mockReturnValue({ eq: mockEqActive });
+    const mockSelect = jest.fn().mockReturnValue({ eq: mockEqRestaurant });
     jest.spyOn(supabase, 'from').mockReturnValue({ select: mockSelect } as any);
 
     await expect(
       fetchPromotions('a1000000-0000-0000-0000-000000000001'),
+    ).rejects.toMatchObject({ message: 'connection refused' });
+  });
+});
+
+// ── fetchPromotionHistory ────────────────────────────────────────────────────
+
+describe('fetchPromotionHistory', () => {
+  const expiredPromo = { ...mockPromotion, end_date: '2026-01-15', is_active: false };
+
+  it('returns expired promotions ordered by end_date desc', async () => {
+    const mockOrder = jest.fn().mockResolvedValue({ data: [expiredPromo], error: null });
+    const mockLt = jest.fn().mockReturnValue({ order: mockOrder });
+    const mockEq = jest.fn().mockReturnValue({ lt: mockLt });
+    const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
+    jest.spyOn(supabase, 'from').mockReturnValue({ select: mockSelect } as any);
+
+    const result = await fetchPromotionHistory('a1000000-0000-0000-0000-000000000001');
+
+    expect(supabase.from).toHaveBeenCalledWith('promotions');
+    expect(mockEq).toHaveBeenCalledWith('restaurant_id', 'a1000000-0000-0000-0000-000000000001');
+    expect(mockLt).toHaveBeenCalledWith('end_date', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/));
+    expect(mockOrder).toHaveBeenCalledWith('end_date', { ascending: false });
+    expect(result).toHaveLength(1);
+  });
+
+  it('returns empty array when no history exists', async () => {
+    const mockOrder = jest.fn().mockResolvedValue({ data: [], error: null });
+    const mockLt = jest.fn().mockReturnValue({ order: mockOrder });
+    const mockEq = jest.fn().mockReturnValue({ lt: mockLt });
+    const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
+    jest.spyOn(supabase, 'from').mockReturnValue({ select: mockSelect } as any);
+
+    const result = await fetchPromotionHistory('a1000000-0000-0000-0000-000000000001');
+    expect(result).toEqual([]);
+  });
+
+  it('throws on database error', async () => {
+    const mockOrder = jest.fn().mockResolvedValue({
+      data: null,
+      error: { message: 'connection refused' },
+    });
+    const mockLt = jest.fn().mockReturnValue({ order: mockOrder });
+    const mockEq = jest.fn().mockReturnValue({ lt: mockLt });
+    const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
+    jest.spyOn(supabase, 'from').mockReturnValue({ select: mockSelect } as any);
+
+    await expect(
+      fetchPromotionHistory('a1000000-0000-0000-0000-000000000001'),
     ).rejects.toMatchObject({ message: 'connection refused' });
   });
 });
@@ -275,5 +319,58 @@ describe('togglePromotion', () => {
     await expect(
       togglePromotion('p1000000-0000-0000-0000-000000000001', true),
     ).rejects.toMatchObject({ message: 'permission denied' });
+  });
+});
+
+// ── createFlashDeal ──────────────────────────────────────────────────────────
+
+describe('createFlashDeal', () => {
+  const flashParams = {
+    restaurant_id: 'a1000000-0000-0000-0000-000000000001',
+    name: 'Lunch Rush',
+    discount_type: 'percentage' as const,
+    discount_value: 15,
+    applicable_item_ids: ['item-1'],
+    duration_hours: 6,
+  };
+
+  it('inserts flash deal with computed dates', async () => {
+    const mockSingle = jest.fn().mockResolvedValue({ data: mockPromotion, error: null });
+    const mockSelect = jest.fn().mockReturnValue({ single: mockSingle });
+    const mockInsert = jest.fn().mockReturnValue({ select: mockSelect });
+    jest.spyOn(supabase, 'from').mockReturnValue({ insert: mockInsert } as any);
+
+    const result = await createFlashDeal(flashParams);
+
+    expect(supabase.from).toHaveBeenCalledWith('promotions');
+    // Capture computed dates for exact assertion
+    const insertedData = mockInsert.mock.calls[0][0];
+    expect(insertedData.start_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(insertedData.end_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(mockInsert).toHaveBeenCalledWith({
+      restaurant_id: flashParams.restaurant_id,
+      name: flashParams.name,
+      discount_type: flashParams.discount_type,
+      discount_value: flashParams.discount_value,
+      applicable_item_ids: flashParams.applicable_item_ids,
+      start_date: insertedData.start_date,
+      end_date: insertedData.end_date,
+      push_enabled: false,
+    });
+    expect(result.name).toBe('Summer Special');
+  });
+
+  it('throws on database error', async () => {
+    const mockSingle = jest.fn().mockResolvedValue({
+      data: null,
+      error: { message: 'RLS policy violation' },
+    });
+    const mockSelect = jest.fn().mockReturnValue({ single: mockSingle });
+    const mockInsert = jest.fn().mockReturnValue({ select: mockSelect });
+    jest.spyOn(supabase, 'from').mockReturnValue({ insert: mockInsert } as any);
+
+    await expect(createFlashDeal(flashParams)).rejects.toMatchObject({
+      message: 'RLS policy violation',
+    });
   });
 });

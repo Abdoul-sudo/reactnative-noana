@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   fetchPromotions,
+  fetchPromotionHistory,
   fetchPromotionStats,
-  type Promotion,
   type PromotionWithStats,
 } from '@/lib/api/owner-promotions';
 
 export function useOwnerPromotions(restaurantId: string) {
-  const [promotions, setPromotions] = useState<PromotionWithStats[]>([]);
+  const [activePromotions, setActivePromotions] = useState<PromotionWithStats[]>([]);
+  const [historyPromotions, setHistoryPromotions] = useState<PromotionWithStats[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -15,6 +16,19 @@ export function useOwnerPromotions(restaurantId: string) {
   useEffect(() => {
     return () => { mountedRef.current = false; };
   }, []);
+
+  async function loadWithStats(promos: { id: string }[]) {
+    return Promise.all(
+      promos.map(async (promo) => {
+        try {
+          const stats = await fetchPromotionStats(promo.id);
+          return { ...promo, ...stats };
+        } catch {
+          return { ...promo, order_count: 0, total_revenue: 0 };
+        }
+      }),
+    ) as Promise<PromotionWithStats[]>;
+  }
 
   useEffect(() => {
     if (!restaurantId) return;
@@ -26,22 +40,19 @@ export function useOwnerPromotions(restaurantId: string) {
       setError(null);
 
       try {
-        const promos = await fetchPromotions(restaurantId);
+        const [active, history] = await Promise.all([
+          fetchPromotions(restaurantId),
+          fetchPromotionHistory(restaurantId),
+        ]);
 
-        // Fetch stats for each promotion in parallel
-        const withStats: PromotionWithStats[] = await Promise.all(
-          promos.map(async (promo) => {
-            try {
-              const stats = await fetchPromotionStats(promo.id);
-              return { ...promo, ...stats };
-            } catch {
-              return { ...promo, order_count: 0, total_revenue: 0 };
-            }
-          }),
-        );
+        const [activeWithStats, historyWithStats] = await Promise.all([
+          loadWithStats(active),
+          loadWithStats(history),
+        ]);
 
         if (!cancelled) {
-          setPromotions(withStats);
+          setActivePromotions(activeWithStats);
+          setHistoryPromotions(historyWithStats);
         }
       } catch (e) {
         if (!cancelled) {
@@ -63,20 +74,19 @@ export function useOwnerPromotions(restaurantId: string) {
     setError(null);
 
     try {
-      const promos = await fetchPromotions(restaurantId);
-      const withStats: PromotionWithStats[] = await Promise.all(
-        promos.map(async (promo) => {
-          try {
-            const stats = await fetchPromotionStats(promo.id);
-            return { ...promo, ...stats };
-          } catch {
-            return { ...promo, order_count: 0, total_revenue: 0 };
-          }
-        }),
-      );
+      const [active, history] = await Promise.all([
+        fetchPromotions(restaurantId),
+        fetchPromotionHistory(restaurantId),
+      ]);
+
+      const [activeWithStats, historyWithStats] = await Promise.all([
+        loadWithStats(active),
+        loadWithStats(history),
+      ]);
 
       if (mountedRef.current) {
-        setPromotions(withStats);
+        setActivePromotions(activeWithStats);
+        setHistoryPromotions(historyWithStats);
       }
     } catch (e) {
       if (mountedRef.current) {
@@ -85,5 +95,5 @@ export function useOwnerPromotions(restaurantId: string) {
     }
   }
 
-  return { promotions, isLoading, error, refetch };
+  return { activePromotions, historyPromotions, isLoading, error, refetch };
 }

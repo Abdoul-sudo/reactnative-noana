@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   Text,
   View,
 } from 'react-native';
@@ -15,6 +16,7 @@ import {
   Tag,
   ToggleLeft,
   ToggleRight,
+  Zap,
 } from 'lucide-react-native';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
@@ -28,10 +30,12 @@ import { centimesToPrice } from '@/lib/schemas/menu-item';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { PromotionFormSheet } from '@/components/owner/promotion-form-sheet';
+import { FlashDealFormSheet } from '@/components/owner/flash-deal-form-sheet';
 
 // ── Types ────────────────────────────────────────────────
 
 type SimpleMenuItem = { id: string; name: string };
+type TabKey = 'active' | 'history';
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -44,26 +48,86 @@ function formatDate(dateStr: string): string {
   return `${d}/${m}/${y}`;
 }
 
+// ── Tab Bar ─────────────────────────────────────────────
+
+function PromotionTabBar({
+  activeTab,
+  activeCounts,
+  onSelect,
+}: {
+  activeTab: TabKey;
+  activeCounts: { active: number; history: number };
+  onSelect: (tab: TabKey) => void;
+}) {
+  const tabs: { key: TabKey; label: string }[] = [
+    { key: 'active', label: 'Active' },
+    { key: 'history', label: 'History' },
+  ];
+
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+      className="mb-3"
+    >
+      {tabs.map((tab) => {
+        const isActive = tab.key === activeTab;
+        const count = activeCounts[tab.key];
+        const color = isActive ? '#dc2626' : '#292524';
+
+        return (
+          <Pressable
+            key={tab.key}
+            onPress={() => onSelect(tab.key)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: isActive }}
+            className="flex-row items-center rounded-full px-4 py-2"
+            style={{ backgroundColor: color }}
+          >
+            <Text
+              className="font-[Karla_600SemiBold] text-sm"
+              style={{ color: isActive ? '#ffffff' : '#a8a29e' }}
+            >
+              {tab.label}
+            </Text>
+            {count > 0 && (
+              <View
+                className="ml-1.5 rounded-full px-1.5 min-w-[20px] items-center"
+                style={{
+                  backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : '#44403c',
+                }}
+              >
+                <Text
+                  className="font-[Karla_600SemiBold] text-xs"
+                  style={{ color: isActive ? '#ffffff' : '#a8a29e' }}
+                >
+                  {count}
+                </Text>
+              </View>
+            )}
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+}
+
 // ── Promotion Card ───────────────────────────────────────
 
 function PromotionCard({
   promotion,
   onEdit,
   onToggle,
+  isHistory,
 }: {
   promotion: PromotionWithStats;
   onEdit: (promo: Promotion) => void;
   onToggle: (promoId: string, isActive: boolean) => void;
+  isHistory?: boolean;
 }) {
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  const isExpired = promotion.end_date < todayStr;
-  const statusColor = promotion.is_active && !isExpired ? '#22c55e' : '#78716c';
-  const statusLabel = isExpired
-    ? 'Expired'
-    : promotion.is_active
-      ? 'Active'
-      : 'Inactive';
+  const statusColor = isHistory ? '#78716c' : '#22c55e';
+  const statusLabel = isHistory ? 'Expired' : 'Active';
 
   return (
     <View className="bg-stone-800 rounded-xl p-4 mx-4">
@@ -128,11 +192,26 @@ function PromotionCard({
             Revenue
           </Text>
         </View>
+        {isHistory && (
+          <>
+            <View className="w-px bg-stone-600 mx-2" />
+            <View className="flex-1 items-center">
+              <Text className="font-[Karla_700Bold] text-lg text-stone-100">
+                {promotion.discount_type === 'fixed' && promotion.order_count > 0
+                  ? `${centimesToPrice(promotion.discount_value * promotion.order_count)} DA`
+                  : '—'}
+              </Text>
+              <Text className="font-[Karla_400Regular] text-xs text-stone-400">
+                Discount cost
+              </Text>
+            </View>
+          </>
+        )}
       </View>
 
-      {/* Actions */}
-      <View className="flex-row gap-3">
-        {!isExpired && (
+      {/* Actions — only for active tab */}
+      {!isHistory && (
+        <View className="flex-row gap-3">
           <Pressable
             onPress={() => onToggle(promotion.id, !promotion.is_active)}
             accessibilityRole="button"
@@ -151,19 +230,19 @@ function PromotionCard({
               {promotion.is_active ? 'Active' : 'Inactive'}
             </Text>
           </Pressable>
-        )}
 
-        <Pressable
-          onPress={() => onEdit(promotion)}
-          accessibilityRole="button"
-          accessibilityLabel="Edit promotion"
-          className="flex-row items-center ml-auto"
-        >
-          <Text className="font-[Karla_600SemiBold] text-xs" style={{ color: '#ca8a04' }}>
-            Edit
-          </Text>
-        </Pressable>
-      </View>
+          <Pressable
+            onPress={() => onEdit(promotion)}
+            accessibilityRole="button"
+            accessibilityLabel="Edit promotion"
+            className="flex-row items-center ml-auto"
+          >
+            <Text className="font-[Karla_600SemiBold] text-xs" style={{ color: '#ca8a04' }}>
+              Edit
+            </Text>
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 }
@@ -175,7 +254,14 @@ function PromotionsSkeleton() {
     <SafeAreaView className="flex-1 bg-stone-900" edges={['top']}>
       <View className="px-4 pt-4 pb-2 flex-row items-center justify-between">
         <Skeleton className="h-7 w-28 rounded bg-stone-800" />
-        <Skeleton className="h-9 w-36 rounded-full bg-stone-800" />
+        <View className="flex-row gap-2">
+          <Skeleton className="h-9 w-28 rounded-full bg-stone-800" />
+          <Skeleton className="h-9 w-24 rounded-full bg-stone-800" />
+        </View>
+      </View>
+      <View className="flex-row gap-2 px-4 mb-3">
+        <Skeleton className="h-8 w-20 rounded-full bg-stone-800" />
+        <Skeleton className="h-8 w-20 rounded-full bg-stone-800" />
       </View>
       <View className="gap-3 mt-2">
         {[1, 2, 3].map((i) => (
@@ -232,16 +318,24 @@ export default function OwnerPromotionsScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [initLoading, setInitLoading] = useState(true);
   const [initError, setInitError] = useState<Error | null>(null);
+  const [activeTab, setActiveTab] = useState<TabKey>('active');
 
   // Form sheet state
   const formSheetRef = useRef<BottomSheetModal>(null);
+  const flashDealSheetRef = useRef<BottomSheetModal>(null);
   const [editPromotion, setEditPromotion] = useState<Promotion | null>(null);
   const [formNonce, setFormNonce] = useState(0);
+  const [flashNonce, setFlashNonce] = useState(0);
 
   function handleCreate() {
     setEditPromotion(null);
     setFormNonce((n) => n + 1);
     formSheetRef.current?.present();
+  }
+
+  function handleFlashDeal() {
+    setFlashNonce((n) => n + 1);
+    flashDealSheetRef.current?.present();
   }
 
   function handleEdit(promo: Promotion) {
@@ -279,7 +373,6 @@ export default function OwnerPromotionsScreen() {
         if (!cancelled && rid) {
           setRestaurantId(rid);
 
-          // Fetch menu items for multi-select
           const categories = await fetchMenuByRestaurant(rid);
           const items: SimpleMenuItem[] = [];
           for (const cat of categories) {
@@ -311,7 +404,8 @@ export default function OwnerPromotionsScreen() {
   }, [userId]);
 
   const {
-    promotions,
+    activePromotions,
+    historyPromotions,
     isLoading: promosLoading,
     error: promosError,
     refetch,
@@ -319,23 +413,25 @@ export default function OwnerPromotionsScreen() {
 
   // Refetch on tab focus (skip first mount)
   const isFirstFocusRef = useRef(true);
-  useFocusEffect(
-    useCallback(() => {
-      if (isFirstFocusRef.current) {
-        isFirstFocusRef.current = false;
-        return;
-      }
-      if (restaurantId) {
-        refetch();
-      }
-    }, [refetch, restaurantId]),
-  );
+  useFocusEffect(() => {
+    if (isFirstFocusRef.current) {
+      isFirstFocusRef.current = false;
+      return;
+    }
+    if (restaurantId) {
+      refetch();
+    }
+  });
 
   async function handleRefresh() {
     setIsRefreshing(true);
     await refetch();
     setIsRefreshing(false);
   }
+
+  // Current tab data
+  const currentData = activeTab === 'active' ? activePromotions : historyPromotions;
+  const isHistory = activeTab === 'history';
 
   // ── State branching ──
 
@@ -391,33 +487,63 @@ export default function OwnerPromotionsScreen() {
         >
           Promotions
         </Text>
-        <Pressable
-          onPress={handleCreate}
-          accessibilityRole="button"
-          accessibilityLabel="Create promotion"
-          className="bg-red-600 rounded-full px-4 py-2"
-        >
-          <Text className="font-[Karla_600SemiBold] text-sm text-white">
-            + Create
-          </Text>
-        </Pressable>
+        <View className="flex-row gap-2">
+          <Pressable
+            onPress={handleFlashDeal}
+            accessibilityRole="button"
+            accessibilityLabel="Create flash deal"
+            className="rounded-full px-3 py-2 flex-row items-center"
+            style={{ backgroundColor: '#d97706' }}
+          >
+            <Zap size={14} color="#ffffff" />
+            <Text className="font-[Karla_600SemiBold] text-sm text-white ml-1">
+              Flash Deal
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={handleCreate}
+            accessibilityRole="button"
+            accessibilityLabel="Create promotion"
+            className="bg-red-600 rounded-full px-4 py-2"
+          >
+            <Text className="font-[Karla_600SemiBold] text-sm text-white">
+              + Create
+            </Text>
+          </Pressable>
+        </View>
       </View>
+
+      {/* Tab Bar */}
+      <PromotionTabBar
+        activeTab={activeTab}
+        activeCounts={{
+          active: activePromotions.length,
+          history: historyPromotions.length,
+        }}
+        onSelect={setActiveTab}
+      />
 
       {/* Promotions List */}
       <FlatList
-        data={promotions}
+        data={currentData}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <PromotionCard
             promotion={item}
             onEdit={handleEdit}
             onToggle={handleToggle}
+            isHistory={isHistory}
           />
         )}
         ItemSeparatorComponent={CardSeparator}
-        ListEmptyComponent={<EmptyState type="promotions" onCta={handleCreate} />}
+        ListEmptyComponent={
+          <EmptyState
+            type={isHistory ? 'promotion_history' : 'promotions'}
+            onCta={isHistory ? undefined : handleCreate}
+          />
+        }
         contentContainerStyle={
-          promotions.length === 0
+          currentData.length === 0
             ? { flexGrow: 1 }
             : { paddingTop: 4, paddingBottom: 24 }
         }
@@ -437,6 +563,15 @@ export default function OwnerPromotionsScreen() {
         menuItems={menuItems}
         editPromotion={editPromotion}
         nonce={formNonce}
+        onSaved={handleSaved}
+      />
+
+      {/* Flash Deal Form Sheet */}
+      <FlashDealFormSheet
+        ref={flashDealSheetRef}
+        restaurantId={restaurantId}
+        menuItems={menuItems}
+        nonce={flashNonce}
         onSaved={handleSaved}
       />
     </SafeAreaView>

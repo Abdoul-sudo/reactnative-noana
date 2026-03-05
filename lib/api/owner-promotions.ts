@@ -20,15 +20,38 @@ export type PromotionWithStats = Promotion & {
   total_revenue: number;
 };
 
-/** Fetches all promotions for a restaurant, ordered by newest first */
+/** Fetches active promotions for a restaurant (not expired, is_active) */
 export async function fetchPromotions(
   restaurantId: string,
 ): Promise<Promotion[]> {
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
   const { data, error } = await supabase
     .from('promotions')
     .select('*')
     .eq('restaurant_id', restaurantId)
+    .eq('is_active', true)
+    .gte('end_date', todayStr)
     .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as Promotion[];
+}
+
+/** Fetches expired/completed promotions for history view */
+export async function fetchPromotionHistory(
+  restaurantId: string,
+): Promise<Promotion[]> {
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+  const { data, error } = await supabase
+    .from('promotions')
+    .select('*')
+    .eq('restaurant_id', restaurantId)
+    .lt('end_date', todayStr)
+    .order('end_date', { ascending: false });
 
   if (error) throw error;
   return (data ?? []) as Promotion[];
@@ -109,6 +132,42 @@ export async function updatePromotion(
       push_enabled: params.push_enabled,
     })
     .eq('id', promotionId)
+    .select('*')
+    .single();
+
+  if (error) throw error;
+  return data as Promotion;
+}
+
+/** Creates a flash deal with duration in hours (start today, end = today + ceil(hours/24) days) */
+export async function createFlashDeal(params: {
+  restaurant_id: string;
+  name: string;
+  discount_type: 'percentage' | 'fixed';
+  discount_value: number;
+  applicable_item_ids: string[];
+  duration_hours: number;
+}): Promise<Promotion> {
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+  const daysToAdd = Math.ceil(params.duration_hours / 24);
+  const endDate = new Date(today);
+  endDate.setDate(endDate.getDate() + daysToAdd);
+  const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+
+  const { data, error } = await supabase
+    .from('promotions')
+    .insert({
+      restaurant_id: params.restaurant_id,
+      name: params.name,
+      discount_type: params.discount_type,
+      discount_value: params.discount_value,
+      applicable_item_ids: params.applicable_item_ids,
+      start_date: todayStr,
+      end_date: endDateStr,
+      push_enabled: false,
+    })
     .select('*')
     .single();
 
