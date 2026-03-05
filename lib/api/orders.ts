@@ -28,6 +28,7 @@ export type CreateOrderInput = {
   delivery_fee: number;
   total: number;
   special_instructions?: string;
+  promotion_id?: string;
 };
 
 export type OrderWithRestaurant = Order & {

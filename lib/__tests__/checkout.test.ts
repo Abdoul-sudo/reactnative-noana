@@ -137,4 +137,33 @@ describe('buildOrderPayload', () => {
     expect(payload.delivery_address.lat).toBeNull();
     expect(payload.delivery_address.lng).toBeNull();
   });
+
+  it('includes promotion_id when provided', () => {
+    const payload = buildOrderPayload({
+      userId: 'user-1',
+      restaurantId: 'rest-1',
+      items: MOCK_CART_ITEMS,
+      selectedAddress: MOCK_ADDRESS,
+      subtotal: 2240,
+      deliveryFee: 0,
+      total: 2240,
+      promotionId: 'promo-123',
+    });
+
+    expect(payload.promotion_id).toBe('promo-123');
+  });
+
+  it('omits promotion_id when not provided', () => {
+    const payload = buildOrderPayload({
+      userId: 'user-1',
+      restaurantId: 'rest-1',
+      items: MOCK_CART_ITEMS,
+      selectedAddress: MOCK_ADDRESS,
+      subtotal: 2800,
+      deliveryFee: 0,
+      total: 2800,
+    });
+
+    expect(payload.promotion_id).toBeUndefined();
+  });
 });

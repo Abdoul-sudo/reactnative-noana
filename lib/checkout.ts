@@ -15,6 +15,7 @@ type BuildOrderPayloadInput = {
   deliveryFee: number;
   total: number;
   specialInstructions?: string;
+  promotionId?: string;
 };
 
 /**
@@ -47,5 +48,6 @@ export function buildOrderPayload(input: BuildOrderPayloadInput): CreateOrderInp
     delivery_fee: input.deliveryFee,
     total: input.total,
     special_instructions: input.specialInstructions,
+    promotion_id: input.promotionId,
   };
 }

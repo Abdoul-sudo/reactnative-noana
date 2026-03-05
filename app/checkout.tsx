@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, MapPin, CreditCard, Plus } from 'lucide-react-native';
+import { ArrowLeft, MapPin, CreditCard, Plus, Tag } from 'lucide-react-native';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
 import { useCartStore } from '@/stores/cart-store';
@@ -11,6 +11,8 @@ import { useAddresses } from '@/hooks/use-addresses';
 import { createOrder } from '@/lib/api/orders';
 import { supabase } from '@/lib/supabase';
 import { type Address } from '@/lib/api/addresses';
+import { fetchActivePromotions, type Promotion } from '@/lib/api/promotions';
+import { computeCheckoutDiscounts } from '@/lib/checkout-promotions';
 import { AddressSelector } from '@/components/address/address-selector';
 import { AddressFormSheet } from '@/components/address/address-form-sheet';
 import { buildOrderPayload } from '@/lib/checkout';
@@ -39,6 +41,13 @@ export default function CheckoutScreen() {
     }
   }, [addresses, selectedAddress]);
 
+  // Promotions
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  useEffect(() => {
+    if (!restaurantId) return;
+    fetchActivePromotions(restaurantId).catch((): Promotion[] => []).then(setPromotions);
+  }, [restaurantId]);
+
   // Form state
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -48,9 +57,13 @@ export default function CheckoutScreen() {
   const addressSelectorRef = useRef<BottomSheetModal>(null);
   const addressFormRef = useRef<BottomSheetModal>(null);
 
+  // Price calculations with promotion discounts
   const subtotal = getTotal();
   const deliveryFee = 0;
-  const total = Number((subtotal + deliveryFee).toFixed(2));
+  const discountResult = computeCheckoutDiscounts(items, promotions);
+  const discountedSubtotal = discountResult.discountedSubtotal;
+  const totalDiscount = discountResult.totalDiscount;
+  const total = Number((discountedSubtotal + deliveryFee).toFixed(2));
 
   // Redirect back if cart is empty (e.g. navigated directly)
   if (items.length === 0) {
@@ -87,10 +100,11 @@ export default function CheckoutScreen() {
         restaurantId: restaurantId!,
         items,
         selectedAddress,
-        subtotal,
+        subtotal: discountedSubtotal,
         deliveryFee,
         total,
         specialInstructions: specialInstructions.trim() || undefined,
+        promotionId: discountResult.promotionId ?? undefined,
       });
 
       // Simulate processing delay for realistic feel (1-2s)
@@ -196,16 +210,45 @@ export default function CheckoutScreen() {
             </Text>
           )}
 
-          {items.map((item) => (
-            <View key={item.id} className="flex-row justify-between py-2">
-              <Text className="font-[Karla_400Regular] text-sm text-gray-800 flex-1">
-                {item.name} x{item.quantity}
-              </Text>
-              <Text className="font-[Karla_600SemiBold] text-sm text-gray-900">
-                {Number((item.price * item.quantity).toFixed(2))} DA
-              </Text>
-            </View>
-          ))}
+          {items.map((item) => {
+            const discount = discountResult.itemDiscounts.get(item.id);
+            const lineTotal = Number((item.price * item.quantity).toFixed(2));
+            const discountedLineTotal = discount
+              ? Number((discount.discountedPrice * item.quantity).toFixed(2))
+              : null;
+
+            return (
+              <View key={item.id} className="py-2">
+                <View className="flex-row justify-between">
+                  <Text className="font-[Karla_400Regular] text-sm text-gray-800 flex-1">
+                    {item.name} x{item.quantity}
+                  </Text>
+                  {discountedLineTotal != null ? (
+                    <View className="items-end">
+                      <Text className="font-[Karla_400Regular] text-xs text-gray-400 line-through">
+                        {lineTotal} DA
+                      </Text>
+                      <Text className="font-[Karla_700Bold] text-sm" style={{ color: '#dc2626' }}>
+                        {discountedLineTotal} DA
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text className="font-[Karla_600SemiBold] text-sm text-gray-900">
+                      {lineTotal} DA
+                    </Text>
+                  )}
+                </View>
+                {discount && (
+                  <View className="flex-row items-center mt-0.5">
+                    <Tag size={10} color="#d97706" />
+                    <Text className="font-[Karla_400Regular] text-[10px] ml-0.5" style={{ color: '#d97706' }}>
+                      {discount.promotionName}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            );
+          })}
 
           <View className="border-t border-gray-100 mt-2 pt-2">
             <View className="flex-row justify-between mb-1">
@@ -214,6 +257,16 @@ export default function CheckoutScreen() {
                 {subtotal} DA
               </Text>
             </View>
+            {totalDiscount > 0 && (
+              <View className="flex-row justify-between mb-1">
+                <Text className="font-[Karla_400Regular] text-sm" style={{ color: '#16a34a' }}>
+                  Promotion
+                </Text>
+                <Text className="font-[Karla_600SemiBold] text-sm" style={{ color: '#16a34a' }}>
+                  -{totalDiscount} DA
+                </Text>
+              </View>
+            )}
             <View className="flex-row justify-between mb-2">
               <Text className="font-[Karla_400Regular] text-sm text-gray-600">Delivery fee</Text>
               <Text className="font-[Karla_600SemiBold] text-sm text-gray-900">
