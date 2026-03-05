@@ -237,6 +237,7 @@ export type Database = {
           on_the_way_at: string | null
           delivered_at: string | null
           cancelled_at: string | null
+          promotion_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -257,6 +258,7 @@ export type Database = {
           on_the_way_at?: string | null
           delivered_at?: string | null
           cancelled_at?: string | null
+          promotion_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -277,6 +279,7 @@ export type Database = {
           on_the_way_at?: string | null
           delivered_at?: string | null
           cancelled_at?: string | null
+          promotion_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -289,6 +292,66 @@ export type Database = {
           },
           {
             foreignKeyName: "orders_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_promotion_id_fkey"
+            columns: ["promotion_id"]
+            isOneToOne: false
+            referencedRelation: "promotions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      promotions: {
+        Row: {
+          id: string
+          restaurant_id: string
+          name: string
+          discount_type: string
+          discount_value: number
+          applicable_item_ids: Json
+          start_date: string
+          end_date: string
+          is_active: boolean
+          push_enabled: boolean
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          restaurant_id: string
+          name: string
+          discount_type: string
+          discount_value: number
+          applicable_item_ids?: Json
+          start_date: string
+          end_date: string
+          is_active?: boolean
+          push_enabled?: boolean
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          restaurant_id?: string
+          name?: string
+          discount_type?: string
+          discount_value?: number
+          applicable_item_ids?: Json
+          start_date?: string
+          end_date?: string
+          is_active?: boolean
+          push_enabled?: boolean
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotions_restaurant_id_fkey"
             columns: ["restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
