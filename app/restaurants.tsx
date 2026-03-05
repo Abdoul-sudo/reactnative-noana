@@ -13,6 +13,7 @@ import { ErrorState } from '@/components/ui/error-state';
 import { useDietaryFilters } from '@/hooks/use-dietary-filters';
 import { useRestaurantListing, type ListingFilters } from '@/hooks/use-restaurant-listing';
 import { type Restaurant } from '@/lib/api/restaurants';
+import { useRestaurantPromotions } from '@/hooks/use-restaurant-promotions';
 
 /**
  * Restaurant listing screen with filters, cards, and infinite scroll.
@@ -43,6 +44,8 @@ export default function RestaurantsScreen() {
     hasActiveFilters,
   } = useRestaurantListing(cuisine, activeFilters);
 
+  const { promotionsMap } = useRestaurantPromotions(restaurants.map((r) => r.id));
+
   function handleClearAll() {
     clearFilters();
     clearAllFilters();
@@ -54,7 +57,7 @@ export default function RestaurantsScreen() {
   }
 
   function renderItem({ item }: { item: Restaurant }) {
-    return <RestaurantCard restaurant={item} layout="list" />;
+    return <RestaurantCard restaurant={item} layout="list" promotions={promotionsMap.get(item.id)} />;
   }
 
   function renderFooter() {

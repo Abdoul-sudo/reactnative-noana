@@ -19,8 +19,10 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { useRestaurantDetail } from '@/hooks/use-restaurant-detail';
 import { useRestaurantReviews } from '@/hooks/use-restaurant-reviews';
 import { type MenuItem } from '@/lib/api/menu';
+import { type Promotion } from '@/lib/api/promotions';
 import { type ReviewWithProfile } from '@/lib/api/reviews';
 import { type Restaurant } from '@/lib/api/restaurants';
+import { getBestPromotion, calculateDiscountedPrice } from '@/lib/utils/promotion-helpers';
 
 type TabKey = 'menu' | 'reviews' | 'info';
 
@@ -55,6 +57,7 @@ export default function RestaurantDetailScreen() {
   const {
     restaurant,
     menuCategories,
+    promotions,
     isLoading,
     isRefreshing,
     error,
@@ -205,7 +208,7 @@ export default function RestaurantDetailScreen() {
 
           // Menu item row
           if (item && 'price' in item) {
-            return <MenuItemRow item={item as MenuItem} restaurantName={restaurant.name} />;
+            return <MenuItemRow item={item as MenuItem} restaurantName={restaurant.name} promotions={promotions} />;
           }
 
           return null;
@@ -308,11 +311,13 @@ function DetailTabBar({ activeTab, onTabChange }: DetailTabBarProps) {
 
 // ── Menu item row with add-to-cart ───────────────────────────────────────────
 
-function MenuItemRow({ item, restaurantName }: { item: MenuItem; restaurantName: string }) {
+function MenuItemRow({ item, restaurantName, promotions }: { item: MenuItem; restaurantName: string; promotions: Promotion[] }) {
   const dietaryTags = Array.isArray(item.dietary_tags)
     ? (item.dietary_tags as string[])
     : [];
   const isUnavailable = item.is_available === false;
+  const bestPromo = getBestPromotion(item.id, item.price, promotions);
+  const discountedPrice = bestPromo ? calculateDiscountedPrice(item.price, bestPromo) : null;
 
   const quantity = useCartStore(
     (s) => s.items.find((i) => i.id === item.id)?.quantity ?? 0,
@@ -325,7 +330,7 @@ function MenuItemRow({ item, restaurantName }: { item: MenuItem; restaurantName:
       className={`px-4 py-3 border-b border-gray-50 ${isUnavailable ? 'opacity-50' : ''}`}
       accessibilityRole="summary"
       accessibilityLabel={
-        `${item.name}, ${item.price} DA${isUnavailable ? ', unavailable' : ''}`
+        `${item.name}, ${discountedPrice != null ? `${discountedPrice} DA, was ${item.price} DA` : `${item.price} DA`}${isUnavailable ? ', unavailable' : ''}`
       }
     >
       <View className="flex-row justify-between items-start">
@@ -368,9 +373,23 @@ function MenuItemRow({ item, restaurantName }: { item: MenuItem; restaurantName:
 
         {/* Price + cart controls */}
         <View className="items-end">
-          <Text className="font-[Karla_700Bold] text-base text-gray-900">
-            {item.price} DA
-          </Text>
+          {discountedPrice != null ? (
+            <View className="items-end">
+              <Text className="font-[Karla_400Regular] text-xs text-gray-400 line-through">
+                {item.price} DA
+              </Text>
+              <Text className="font-[Karla_700Bold] text-base" style={{ color: '#dc2626' }}>
+                {discountedPrice} DA
+              </Text>
+              <Text className="font-[Karla_400Regular] text-[10px]" style={{ color: '#d97706' }}>
+                {bestPromo?.name}
+              </Text>
+            </View>
+          ) : (
+            <Text className="font-[Karla_700Bold] text-base text-gray-900">
+              {item.price} DA
+            </Text>
+          )}
 
           {!isUnavailable && quantity === 0 && (
             <Pressable

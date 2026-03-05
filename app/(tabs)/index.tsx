@@ -17,6 +17,7 @@ import { useTrendingDishes } from '@/hooks/use-trending-dishes';
 import { useTopRatedRestaurants } from '@/hooks/use-top-rated-restaurants';
 import { type Restaurant } from '@/lib/api/restaurants';
 import { type TrendingDish } from '@/lib/api/menu';
+import { useRestaurantPromotions } from '@/hooks/use-restaurant-promotions';
 import { useSurpriseMe } from '@/hooks/use-surprise-me';
 import { SurpriseMeCard } from '@/components/home/surprise-me-card';
 import { ReorderSection } from '@/components/home/reorder-section';
@@ -51,6 +52,13 @@ export default function HomeScreen() {
   } = useTopRatedRestaurants(activeFilters);
 
   const { surprise, trigger, reset, hasResults } = useSurpriseMe(trendingDishes);
+
+  // Batch-fetch promotions for all displayed restaurants
+  const allRestaurantIds = [
+    ...featuredRestaurants.map((r) => r.id),
+    ...topRatedRestaurants.map((r) => r.id),
+  ];
+  const { promotionsMap } = useRestaurantPromotions(allRestaurantIds);
 
   const isLoading = featuredLoading || trendingLoading || topRatedLoading;
 
@@ -167,7 +175,7 @@ export default function HomeScreen() {
               data={featuredRestaurants}
               keyExtractor={(item: Restaurant) => item.id}
               renderItem={({ item }: { item: Restaurant }) => (
-                <RestaurantCard restaurant={item} />
+                <RestaurantCard restaurant={item} promotions={promotionsMap.get(item.id)} />
               )}
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -216,7 +224,7 @@ export default function HomeScreen() {
               data={topRatedRestaurants}
               keyExtractor={(item: Restaurant) => item.id}
               renderItem={({ item }: { item: Restaurant }) => (
-                <RestaurantCard restaurant={item} layout="grid" />
+                <RestaurantCard restaurant={item} layout="grid" promotions={promotionsMap.get(item.id)} />
               )}
               numColumns={2}
               scrollEnabled={false}

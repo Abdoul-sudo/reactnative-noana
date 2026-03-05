@@ -1,12 +1,16 @@
 import { Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Star, Clock } from 'lucide-react-native';
+import { Star, Clock, Tag } from 'lucide-react-native';
 import { type Restaurant } from '@/lib/api/restaurants';
+import { type Promotion } from '@/lib/api/promotions';
+import { formatPromotionBadge } from '@/lib/utils/promotion-helpers';
 import { HeartToggle } from '@/components/ui/heart-toggle';
 
 type RestaurantCardProps = {
   restaurant: Restaurant;
+  /** Active promotions for this restaurant (optional — badge shown when present) */
+  promotions?: Promotion[];
   /**
    * 'carousel' = fixed 208px width (horizontal list).
    * 'grid'     = flex width (2-column grid).
@@ -15,7 +19,7 @@ type RestaurantCardProps = {
   layout?: 'carousel' | 'grid' | 'list';
 };
 
-export function RestaurantCard({ restaurant, layout = 'carousel' }: RestaurantCardProps) {
+export function RestaurantCard({ restaurant, promotions, layout = 'carousel' }: RestaurantCardProps) {
   const router = useRouter();
   const isGrid = layout === 'grid';
   const isList = layout === 'list';
@@ -23,6 +27,10 @@ export function RestaurantCard({ restaurant, layout = 'carousel' }: RestaurantCa
   const dietaryBadges = Array.isArray(restaurant.dietary_options)
     ? (restaurant.dietary_options as string[])
     : [];
+
+  const badgeText = promotions && promotions.length > 0
+    ? formatPromotionBadge(promotions)
+    : '';
 
   // ── List layout: full-width horizontal row ────────────────────────
   if (isList) {
@@ -71,6 +79,18 @@ export function RestaurantCard({ restaurant, layout = 'carousel' }: RestaurantCa
             )}
           </View>
 
+          {/* Promotion badge */}
+          {badgeText !== '' && (
+            <View className="flex-row items-center mt-1">
+              <View className="flex-row items-center rounded px-1.5 py-0.5" style={{ backgroundColor: '#fef3c7' }}>
+                <Tag size={10} color="#d97706" />
+                <Text className="font-[Karla_600SemiBold] text-[10px] ml-0.5" style={{ color: '#d97706' }}>
+                  {badgeText}
+                </Text>
+              </View>
+            </View>
+          )}
+
           {/* Rating + delivery time */}
           <View className="flex-row items-center mt-1">
             {restaurant.rating != null && (
@@ -117,7 +137,7 @@ export function RestaurantCard({ restaurant, layout = 'carousel' }: RestaurantCa
       className={isGrid ? 'flex-1' : 'mr-3'}
       style={isGrid ? undefined : { width: 208 }}
     >
-      {/* Cover photo with heart overlay */}
+      {/* Cover photo with heart overlay and promotion badge */}
       <View className="relative">
         <Image
           source={restaurant.cover_image_url ?? undefined}
@@ -126,6 +146,17 @@ export function RestaurantCard({ restaurant, layout = 'carousel' }: RestaurantCa
           className={isGrid ? 'w-full h-28 rounded-xl bg-gray-200' : 'w-full h-36 rounded-xl bg-gray-200'}
           accessibilityLabel={`${restaurant.name} cover photo`}
         />
+        {badgeText !== '' && (
+          <View
+            className="absolute top-2 left-2 flex-row items-center rounded-full px-2 py-1"
+            style={{ backgroundColor: '#d97706' }}
+          >
+            <Tag size={10} color="#ffffff" />
+            <Text className="font-[Karla_600SemiBold] text-[10px] text-white ml-0.5">
+              {badgeText}
+            </Text>
+          </View>
+        )}
         <View className="absolute top-2 right-2">
           <HeartToggle restaurantId={restaurant.id} onImage />
         </View>

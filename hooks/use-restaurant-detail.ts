@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { fetchRestaurantBySlug, type Restaurant } from '@/lib/api/restaurants';
 import { fetchMenuByRestaurant, type MenuCategoryWithItems } from '@/lib/api/menu';
+import { fetchActivePromotions, type Promotion } from '@/lib/api/promotions';
 
 /**
  * Fetches restaurant details + menu for the restaurant detail screen.
@@ -16,6 +17,7 @@ import { fetchMenuByRestaurant, type MenuCategoryWithItems } from '@/lib/api/men
 export function useRestaurantDetail(slug: string) {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [menuCategories, setMenuCategories] = useState<MenuCategoryWithItems[]>([]);
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -48,12 +50,16 @@ export function useRestaurantDetail(slug: string) {
           return;
         }
 
-        // Step 2: fetch menu using restaurant.id
-        const menu = await fetchMenuByRestaurant(rest.id);
+        // Step 2: fetch menu + promotions in parallel
+        const [menu, promos] = await Promise.all([
+          fetchMenuByRestaurant(rest.id),
+          fetchActivePromotions(rest.id).catch(() => [] as Promotion[]),
+        ]);
 
         if (!cancelled) {
           setRestaurant(rest);
           setMenuCategories(menu);
+          setPromotions(promos);
         }
       } catch (e) {
         if (!cancelled) {
@@ -87,11 +93,15 @@ export function useRestaurantDetail(slug: string) {
         return;
       }
 
-      const menu = await fetchMenuByRestaurant(rest.id);
+      const [menu, promos] = await Promise.all([
+        fetchMenuByRestaurant(rest.id),
+        fetchActivePromotions(rest.id).catch(() => [] as Promotion[]),
+      ]);
 
       if (mountedRef.current) {
         setRestaurant(rest);
         setMenuCategories(menu);
+        setPromotions(promos);
       }
     } catch (e) {
       if (mountedRef.current) {
@@ -107,6 +117,7 @@ export function useRestaurantDetail(slug: string) {
   return {
     restaurant,
     menuCategories,
+    promotions,
     isLoading,
     isRefreshing,
     error,

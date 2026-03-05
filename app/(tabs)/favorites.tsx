@@ -11,6 +11,7 @@ import { FavoritesSkeleton } from '@/components/favorites/favorites-skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ErrorState } from '@/components/ui/error-state';
 import { type Restaurant } from '@/lib/api/restaurants';
+import { useRestaurantPromotions } from '@/hooks/use-restaurant-promotions';
 
 export default function FavoritesScreen() {
   const router = useRouter();
@@ -18,6 +19,7 @@ export default function FavoritesScreen() {
   const isHydrated = useFavoritesStore((s) => s.isHydrated);
   const hydrate = useFavoritesStore((s) => s.hydrate);
   const { restaurants, isLoading, error, refetch } = useFavoriteRestaurants();
+  const { promotionsMap } = useRestaurantPromotions(restaurants.map((r) => r.id));
   const [isRefreshing, setIsRefreshing] = useState(false);
   const hasMounted = useRef(false);
 
@@ -93,7 +95,7 @@ export default function FavoritesScreen() {
         numColumns={2}
         keyExtractor={(item: Restaurant) => item.id}
         renderItem={({ item }: { item: Restaurant }) => (
-          <RestaurantCard restaurant={item} layout="grid" />
+          <RestaurantCard restaurant={item} layout="grid" promotions={promotionsMap.get(item.id)} />
         )}
         columnWrapperStyle={{ gap: 12, paddingHorizontal: 16 }}
         contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }}
